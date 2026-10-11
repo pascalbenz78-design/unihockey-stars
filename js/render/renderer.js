@@ -125,6 +125,8 @@ export class Renderer {
         const model = new PlayerModel({
           colors: t.data.colors, number: p.data.number, stick: p.data.stick, stickSide: p.data.stickSide,
           goalie: p.isGoalie, seed: p.id, shadows: this.q.shadows > 0,
+          look: p.data.look, logo: t.data.logo,
+          favorite: !!t.data.goldStick && t.data.favorite === p.id,
         });
         model.root.visible = false;
         this.scene.add(model.root);
@@ -137,6 +139,10 @@ export class Renderer {
     }
     const c = match.ball;
     this.camTarget.set(c.x, 0, -c.y);
+    // Logo des Heimteams im Mittelkreis, beide Logos auf den Banden
+    const home = match.teams[0].data;
+    this.arena.paintCenter(home.logo || null, home.name);
+    this.arena.paintAds(match.teams.map(t => t.data));
   }
 
   render(dt, extra = {}) {

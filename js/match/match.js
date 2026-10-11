@@ -660,8 +660,14 @@ export class Match {
     const aimMul = t.human ? 1 : 1.5 - 0.6 * t.skill;
     const spread = (SH.baseSpread + SH.chargeSpread * charge + SH.fatigueSpread * (1 - p.stamina) +
       SH.skillSpread * (1 - p.stat('schuss'))) * aimMul;
-    const ang = Math.atan2(target.y - ball.y, target.x - ball.x) + gauss() * spread;
+    // Auslage: Ziel auf der Kellenseite = Rückhand (ungenauer, schwächer)
+    const aim = Math.atan2(target.y - ball.y, target.x - ball.x);
+    let rel = aim - p.facing;
+    rel = Math.atan2(Math.sin(rel), Math.cos(rel));      // > 0 = Ziel links vom Spieler
+    const backhand = rel * p.handSign > SH.backhandAngle;
+    const ang = aim + gauss() * spread * (backhand ? SH.backhandSpread : 1);
     let speed = lerp(SH.minSpeed, SH.maxSpeed, 0.2 + 0.8 * charge) * (0.82 + 0.18 * p.stat('schuss')) * this.tempo;
+    if (backhand) speed *= SH.backhandPower;
     if (opts.oneTimer) speed *= SH.oneTimerBonus;
     ball.owner = null;
     ball.vx = Math.cos(ang) * speed; ball.vy = Math.sin(ang) * speed;

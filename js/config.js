@@ -2,7 +2,7 @@
 // Geschwindigkeiten in m/s. Spielerwerte (Tempo, Schuss …) gehen von 1 bis 99.
 
 export const CONFIG = {
-  version: '0.2.0',
+  version: '0.3.0',
 
   field: {
     length: 40,
@@ -92,6 +92,9 @@ export const CONFIG = {
     fatigueSpread: 0.08,     // zusätzlich bei leerer Ausdauer
     skillSpread: 0.06,       // zusätzlich bei Schuss 1
     maxLift: 3.3,            // vertikale Startgeschwindigkeit
+    backhandAngle: 0.45,     // rad: Ziel so weit auf der Kellenseite = Rückhandschuss
+    backhandSpread: 1.4,
+    backhandPower: 0.88,
     oneTimerWindow: 0.45,
     oneTimerBonus: 1.15,
   },

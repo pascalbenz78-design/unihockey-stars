@@ -4,6 +4,7 @@
 
 import * as THREE from 'three';
 import { CONFIG } from '../config.js';
+import { drawLogo } from '../club/logo.js';
 import {
   HALF_L, HALF_W, GOAL_X, GOAL_HALF_W, GOAL_BACK_X, CREASE_FRONT_X, CREASE_BACK_X, CREASE_HALF_W, FACEOFF_SPOTS,
 } from '../match/field.js';
@@ -84,20 +85,16 @@ export class Arena {
       const k = 0.3 * S;
       line(g, [x - k, y], [x + k, y]); line(g, [x, y - k], [x, y + k]);
     }
-    // Schriftzug im Mittelkreis
-    g.save();
-    g.translate(...P(0, 0));
-    g.globalAlpha = 0.18;
-    g.fillStyle = '#ffffff';
-    starPath(g, 0, 0, 1.6 * S, 0.7 * S, 5);
-    g.fill();
-    g.globalAlpha = 0.5;
-    g.font = `bold ${0.55 * S}px Arial`;
-    g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText('UNIHOCKEY STARS', 0, 2.2 * S);
-    g.restore();
+    // Mittelkreis-Bereich merken, damit das Logo später getauscht werden kann
+    const [mx, my] = P(0, 0);
+    const half = Math.round((F.centerCircleRadius + 0.3) * S);
+    this.center = { x: mx - half, y: my - half, size: half * 2, S, cx: mx, cy: my };
+    this.centerBase = g.getImageData(this.center.x, this.center.y, this.center.size, this.center.size);
+    this.floorCtx = g;
+    this.paintCenter(null);
 
     const tex = new THREE.CanvasTexture(c);
+    this.floorTex = tex;
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 8;
     const rink = new THREE.Mesh(new THREE.PlaneGeometry(F.length, F.width),
@@ -113,11 +110,37 @@ export class Arena {
     this.group.add(hall);
   }
 
-  buildBoards() {
-    // Werbetextur (24 m lang)
-    const c = document.createElement('canvas');
-    c.width = 2048; c.height = 64;
-    const g = c.getContext('2d');
+  // Mittelkreis: Logo des Heimteams (oder Unihockey-Stars-Stern)
+  paintCenter(logo, name) {
+    const g = this.floorCtx, c = this.center, S = c.S;
+    g.putImageData(this.centerBase, c.x, c.y);
+    g.save();
+    g.translate(c.cx, c.cy);
+    if (logo) {
+      g.globalAlpha = 0.8;
+      drawLogo(g, logo, 0, -0.2 * S, 3.2 * S);
+      g.globalAlpha = 0.55;
+      g.fillStyle = '#ffffff';
+      g.font = `bold ${0.42 * S}px Arial`;
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText((name || '').toUpperCase(), 0, 2.15 * S);
+    } else {
+      g.globalAlpha = 0.18;
+      g.fillStyle = '#ffffff';
+      starPath(g, 0, 0, 1.6 * S, 0.7 * S, 5);
+      g.fill();
+      g.globalAlpha = 0.5;
+      g.font = `bold ${0.55 * S}px Arial`;
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText('UNIHOCKEY STARS', 0, 2.2 * S);
+    }
+    g.restore();
+    if (this.floorTex) this.floorTex.needsUpdate = true;
+  }
+
+  // Banden: Sponsoren, dazu Logos der beiden Teams
+  paintAds(teams = []) {
+    const c = this.adCanvas, g = c.getContext('2d');
     const w = c.width / SPONSORS.length;
     SPONSORS.forEach((s, i) => {
       g.fillStyle = s.bg; g.fillRect(i * w, 0, w, c.height);
@@ -126,7 +149,27 @@ export class Arena {
       g.textAlign = 'center'; g.textBaseline = 'middle';
       g.fillText(s.name, i * w + w / 2, c.height / 2 + 2);
     });
+    teams.forEach((t, k) => {
+      if (!t || !t.logo) return;
+      const i = k === 0 ? 1 : 5;
+      g.fillStyle = '#ffffff'; g.fillRect(i * w, 0, w, c.height);
+      drawLogo(g, t.logo, i * w + 34, c.height / 2, 50);
+      g.fillStyle = t.colors ? t.colors.shirt : '#222';
+      g.font = 'bold 24px Arial, sans-serif';
+      g.textAlign = 'left'; g.textBaseline = 'middle';
+      const name = t.name.length > 14 ? t.short : t.name;
+      g.fillText(name, i * w + 66, c.height / 2 + 2);
+    });
     g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, 5); g.fillRect(0, c.height - 4, c.width, 4);
+    if (this.adTexture) this.adTexture.needsUpdate = true;
+  }
+
+  buildBoards() {
+    // Werbetextur (24 m lang)
+    const c = document.createElement('canvas');
+    c.width = 2048; c.height = 64;
+    this.adCanvas = c;
+    this.paintAds();
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.wrapS = THREE.RepeatWrapping;

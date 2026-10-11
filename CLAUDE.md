@@ -15,8 +15,8 @@
 | Etappe | Inhalt | Stand |
 |---|---|---|
 | 1 | Spielbarer Match | abgenommen |
-| 2 | Regeln, Verletzungen, Torjubel | fertig, wartet auf Abnahme |
-| 3 | Eigener Verein | offen |
+| 2 | Regeln, Verletzungen, Torjubel | abgenommen |
+| 3 | Eigener Verein | fertig, wartet auf Abnahme |
 | 4 | Ligen und Saison | offen |
 | 5 | Geld, Halle, Transfers | offen |
 | 6 | Speichern mit Code, Ton, Feinschliff | offen |

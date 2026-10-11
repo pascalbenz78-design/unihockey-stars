@@ -8,6 +8,10 @@ import { Renderer } from './render/renderer.js';
 import { Input, isTouchDevice } from './ui/input.js';
 import { Hud } from './ui/hud.js';
 import { Menus } from './ui/menus.js';
+import { ClubEditor } from './ui/clubEditor.js';
+import { createDefaultClub, clubTeamData, chooseKits, clubAfterMatch } from './club/club.js';
+import { loadClub, saveClub } from './save/clubStore.js';
+import { STAT_NAMES, FOCI, INTENSITY } from './club/training.js';
 import { loadSettings, saveSettings } from './save/settings.js';
 import { applyTeamPrefs, recordMatchInjuries } from './club/teamStore.js';
 import { celebrationName } from './club/celebrations.js';
@@ -20,10 +24,13 @@ class App {
     this.settings = loadSettings();
     this.touch = isTouchDevice();
     document.body.classList.toggle('touch', this.touch);
+    this.club = loadClub();
+    if (!this.club) { this.club = createDefaultClub(); saveClub(this.club); }
     this.refreshTeams();
     this.input = new Input();
     this.hud = new Hud();
     this.menus = new Menus(this);
+    this.clubEditor = new ClubEditor(this);
     this.mode = 'menu';
     this.paused = false;
     this.acc = 0;
@@ -42,6 +49,13 @@ class App {
 
   // Teams mit gespeicherten Jubeln und Verletzungen
   refreshTeams() { this.teams = defaultTeams().map(applyTeamPrefs); }
+
+  // Alle wählbaren Teams: eigener Verein zuerst
+  allTeams() { return [clubTeamData(this.club), ...this.teams]; }
+
+  saveClub() {
+    if (!saveClub(this.club)) this.hud.toast('Speichern nicht möglich (privater Modus?)', 3);
+  }
 
   createRenderer() {
     const old = document.getElementById('game');
@@ -72,10 +86,13 @@ class App {
     this.showTouch(false);
   }
 
-  startFriendly(pick) {
-    const teams = defaultTeams().map(applyTeamPrefs);
+  startFriendly(pick = 0, opp = 1) {
+    this.refreshTeams();
+    const all = this.allTeams();
+    if (opp === pick) opp = (pick + 1) % all.length;
+    // eigenes Team spielt immer zuerst von links nach rechts; Gast evtl. im Auswärtstrikot
+    const teams = chooseKits(all[pick], all[opp]);
     this.friendlyTeams = teams;
-    if (pick === 1) teams.reverse(); // eigenes Team spielt immer zuerst von links nach rechts
     this.match = new Match({
       teams, humanTeam: 0, difficulty: this.settings.difficulty,
       settings: { autoChange: this.settings.autoChange, autoGoalie: this.settings.autoGoalie },
@@ -180,6 +197,13 @@ class App {
     this.renderer.render(this.paused ? 0 : dt);
   }
 
+  trainingSummary(rep) {
+    const t = this.club.training;
+    const imp = rep.improved.map(x => `${x.player.lastName} ${STAT_NAMES[x.stat]} ${x.value}`);
+    const inj = rep.injured.map(x => `🩹 ${x.player.lastName} im Training verletzt (${x.games} ${x.games === 1 ? 'Spiel' : 'Spiele'})`);
+    return `<p class="hint train-sum"><b>Training</b> (${FOCI[t.focus].label}, ${INTENSITY[t.intensity].label}): ${imp.length ? '📈 ' + imp.join(', ') : 'noch keine neuen Punkte'}${inj.length ? '<br>' + inj.join(', ') : ''}</p>`;
+  }
+
   handleEvents() {
     const m = this.match;
     for (const e of m.takeEvents()) {
@@ -229,9 +253,18 @@ class App {
           this.menus.intermission(m);
           break;
         case 'gameEnd': {
-          const healed = this.friendlyTeams ? recordMatchInjuries(this.friendlyTeams, m.rules.injuries) : [];
+          const others = (this.friendlyTeams || []).filter(t => !t.own);
+          const healed = recordMatchInjuries(others, m.rules.injuries.filter(i => !i.team.own));
+          let extra = '';
+          const ownIdx = m.teams.findIndex(t => t.data.own);
+          if (ownIdx >= 0) {
+            const r = clubAfterMatch(this.club, m, ownIdx);
+            this.saveClub();
+            for (const pl of r.healed) healed.push({ team: { short: this.club.short }, player: pl });
+            extra = this.trainingSummary(r.training);
+          }
           this.refreshTeams();
-          this.menus.end(m, healed);
+          this.menus.end(m, healed, extra);
           break;
         }
         case 'lineChange':

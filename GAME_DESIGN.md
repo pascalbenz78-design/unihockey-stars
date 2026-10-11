@@ -296,3 +296,36 @@ Konkrete Festlegungen während des Baus (Werte stehen in `js/config.js`).
   Sprung, Team-Kreis, Bogenschütze, Salutieren. Mitspieler kommen gratulieren
   (beim Team-Kreis eng im Kreis). Zuordnung pro Spieler im Menü
   «Freundschaftsspiel → Jubel zuordnen» (gespeichert).
+
+### Etappe 3: Eigener Verein
+- Der eigene Verein wird beim ersten Start erzeugt («UHC Mein Verein», Stärke
+  wie die Freundschaftsgegner) und lokal gespeichert (`unihockey-stars.club`),
+  automatisch nach jeder Änderung und nach jedem Spiel. Eigene Spieler-IDs ab
+  100001.
+- Menü «Mein Verein» mit Tabs Verein, Logo, Spieler, Aufstellung, Training.
+- Trikots: Heim und Auswärts (Trikot, Akzent, Hose, Stulpen, Nummer, Goalie).
+  Der Gast zieht das Auswärtstrikot an, wenn die Trikotfarben zu ähnlich sind.
+  Auch die Freundschaftsgegner haben jetzt Heim- und Auswärtstrikots und Logos.
+- Logo-JSON `{ shape, bg, border, symbol, symbolColor, initials, textColor }`.
+  5 Formen, 13 Symbole (u. a. Wolf, Adler, Bär, Steinbock, Fuchs, Berg),
+  bis 3 Initialen. Angezeigt im Menü, bei der Teamwahl, im Mittelkreis (Logo
+  des Heimteams), auf der Brust jedes Trikots und auf den Banden (beide Teams).
+  Tabelle folgt in Etappe 4.
+- Spieler: Vor-/Nachname, Nummer (1–99, eindeutig), Position (Center, Flügel,
+  Verteidiger; Goalie fest), Auslage, Schaft- und Kellenfarbe, Haut- und
+  Haarfarbe, Frisur (kurz, lang, Locken, Irokese, Glatze), Jubel. Alter und
+  Werte nur über Training/Alterung veränderbar. Alle Spieler (auch Gegner)
+  haben ein zufälliges, individuelles Aussehen.
+- Lieblingsspieler (★, einer pro Verein, Pascals Idee): goldener, leicht
+  leuchtender Schläger (abschaltbar) und ★ in der Ausdaueranzeige.
+- Auslage: Zielt der Schuss mehr als ~25° auf die Kellenseite, ist es ein
+  Rückhandschuss: Streuung ×1.4, Tempo ×0.88.
+- Aufstellung per Drag & Drop (Pointer-Events, funktioniert mit Finger und
+  Maus): Tausch zwischen beliebigen Plätzen der 3 Linien, 2 Goalies, 3 Ersatz.
+  Goalies nur auf Goalie-Plätze. ⚠ zeigt Spieler auf fremder Position.
+- Training nach jedem Spiel des eigenen Vereins: Schwerpunkt (Ausgeglichen,
+  Tempo, Schuss, Pass, Ausdauer, Zweikampf, Technik, Goalies) und Intensität
+  (Locker ×0.55 ohne Risiko, Normal 0.6 % Verletzungsrisiko pro Spieler, Hart
+  ×1.6 mit 3 %). Fortschritt sammelt sich pro Wert bis zum nächsten Punkt;
+  junge Spieler lernen schneller, hohe Werte steigen langsamer. Bericht auf
+  dem Schlussbildschirm und im Tab Training.

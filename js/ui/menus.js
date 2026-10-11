@@ -2,11 +2,10 @@
 // Anleitung, Pause, Drittelspause mit Statistik, Spielende.
 
 import { CONFIG } from '../config.js';
-import { CELEBRATIONS } from '../club/celebrations.js';
-import { injuredPlayers, saveCelebration } from '../club/teamStore.js';
+import { injuredPlayers } from '../club/teamStore.js';
+import { logoDataURL } from '../club/logo.js';
 import { FOUL_NAMES, INJURY_NAMES } from '../match/rules.js';
 
-const POS_NAME = { C: 'Center', F: 'Flügel', D: 'Verteidiger', G: 'Goalie' };
 
 export class Menus {
   constructor(app) {
@@ -34,31 +33,37 @@ export class Menus {
     this.show(`
       <div class="logo"><span class="star">★</span> UNIHOCKEY <b>STARS</b> <span class="star">★</span></div>
       <p class="sub">Arcade-Unihockey mit Vereinsmanager</p>
+      <button class="club-card" data-act="club">
+        <img src="${logoDataURL(this.app.club.logo, 80)}" alt="">
+        <span><b>${esc(this.app.club.name)}</b><small>Mein Verein bearbeiten ›</small></span>
+      </button>
       <div class="menu-col">
         <button class="primary big" data-act="friendly">Freundschaftsspiel</button>
-        <button class="big" disabled title="folgt in Etappe 3–4">Karriere <small>(bald)</small></button>
+        <button class="big" disabled title="folgt in Etappe 4">Karriere <small>(bald)</small></button>
         <button data-act="settings">Einstellungen</button>
         <button data-act="help">Anleitung</button>
       </div>
-      <p class="ver">Version ${CONFIG.version} · Etappe 2</p>`, 'main');
+      <p class="ver">Version ${CONFIG.version} · Etappe 3</p>`, 'main');
   }
 
   friendly() {
     this.screen = 'friendly';
     const s = this.app.settings;
-    const teams = this.app.teams;
+    const teams = this.app.allTeams();
     this.pick = this.pick ?? 0;
-    const tbtn = (t, i) => `<button class="team-pick ${this.pick === i ? 'sel' : ''}" data-act="pickTeam" data-val="${i}">
-      <i class="swatch" style="background:${t.colors.shirt};border-color:${t.colors.shirt2}"></i>${t.name}</button>`;
+    this.opp = this.opp ?? 1;
+    if (this.opp === this.pick) this.opp = (this.pick + 1) % teams.length;
+    const tbtn = (t, i, act, sel, dis) => `<button class="team-pick ${sel === i ? 'sel' : ''}" data-act="${act}" data-val="${i}" ${dis === i ? 'disabled' : ''}>
+      <img src="${logoDataURL(t.logo, 48)}" alt="">${esc(t.name)}</button>`;
     this.show(`
       <h2>Freundschaftsspiel</h2>
-      <div class="field-row"><label>Dein Team</label><div class="opts">${teams.map(tbtn).join('')}</div></div>
+      <div class="field-row"><label>Dein Team</label><div class="opts">${teams.map((t, i) => tbtn(t, i, 'pickTeam', this.pick, -1)).join('')}</div></div>
+      <div class="field-row"><label>Gegner</label><div class="opts">${teams.map((t, i) => tbtn(t, i, 'pickOpp', this.opp, this.pick)).join('')}</div></div>
       <div class="field-row"><label>Schwierigkeit</label><div class="opts">${this.opts('difficulty', CONFIG.difficulty, s.difficulty)}</div></div>
       <p class="hint">3 Drittel à 20:00 Spielzeit (je 3 Minuten). Bei Unentschieden Verlängerung und Penaltyschiessen.</p>
       ${this.injuryNote(teams[this.pick])}
       <div class="menu-row">
         <button data-act="main">Zurück</button>
-        <button data-act="celebrations">Jubel zuordnen</button>
         <button class="primary big" data-act="start">Anpfiff!</button>
       </div>`);
   }
@@ -67,25 +72,6 @@ export class Menus {
     const inj = injuredPlayers(team);
     if (!inj.length) return '';
     return `<p class="injured">Verletzt: ${inj.map(p => `${p.firstName} ${p.lastName} (${INJURY_NAMES[p.injury.level]}, noch ${p.injury.games} ${p.injury.games === 1 ? 'Spiel' : 'Spiele'})`).join(', ')}</p>`;
-  }
-
-  // Jubel pro Spieler wählen (gespeichert)
-  celebrations() {
-    this.screen = 'celebrations';
-    const team = this.app.teams[this.pick ?? 0];
-    const opts = id => CELEBRATIONS.map(c => `<option value="${c.id}" ${c.id === id ? 'selected' : ''}>${c.name}</option>`).join('');
-    const rows = team.players.filter(p => p.pos !== 'G').map(p => `<tr>
-        <td>#${p.number}</td><td>${p.firstName} ${p.lastName}</td><td class="hint">${POS_NAME[p.pos]}</td>
-        <td><select data-cel="${p.id}">${opts(p.celebration || 0)}</select></td></tr>`).join('');
-    this.show(`
-      <h2>Jubel – ${team.name}</h2>
-      <p class="hint">Nach jedem Tor jubelt der Torschütze so. Die Auswahl wird gespeichert.</p>
-      <table class="cel-table">${rows}</table>
-      <div class="menu-row"><button class="primary" data-act="friendly">Fertig</button></div>`, 'wide');
-    this.el.querySelectorAll('select[data-cel]').forEach(sel => sel.addEventListener('change', () => {
-      const pl = team.players.find(x => x.id === +sel.dataset.cel);
-      saveCelebration(team, pl, +sel.value);
-    }));
   }
 
   opts(key, table, cur) {
@@ -139,6 +125,8 @@ export class Menus {
             <li><b>Ball erobern:</b> ohne Ball nahe beim Gegner Schuss oder Pass drücken (Stockeinsatz).</li>
             <li>Mit Richtung nach oben/unten beim Schuss zielst du in die obere bzw. untere Torecke.</li>
             <li>Müde Spieler sind langsamer und schiessen ungenauer – rechtzeitig wechseln!</li>
+            <li><b>Auslage:</b> Schüsse auf die Seite, auf der die Kelle ist (Rückhand), sind ungenauer.</li>
+            <li><b>Mein Verein:</b> Name, Trikots, Logo, Spieler (Aussehen, Schläger, Jubel), Aufstellung und Training. Der ★ Lieblingsspieler bekommt einen goldenen Schläger.</li>
           </ul>
           <h3>Regeln</h3>
           <ul>
@@ -179,7 +167,7 @@ export class Menus {
       <div class="menu-row"><button class="primary big" data-act="nextPeriod">${btn}</button></div>`, 'wide');
   }
 
-  end(match, healed = []) {
+  end(match, healed = [], extra = '') {
     this.screen = 'end';
     const h = match.human ? match.human.team : null;
     let title = 'Schlussresultat';
@@ -196,6 +184,7 @@ export class Menus {
       ${this.statsTable(match)}
       ${this.goalList(match)}
       ${this.summary(match, healed)}
+      ${extra}
       <div class="menu-row">
         <button data-act="main">Hauptmenü</button>
         <button class="primary big" data-act="start">Revanche</button>
@@ -258,9 +247,10 @@ export class Menus {
     switch (act) {
       case 'main': app.toMenu(); break;
       case 'friendly': this.app.refreshTeams(); this.friendly(); break;
-      case 'celebrations': this.celebrations(); break;
       case 'pickTeam': this.pick = +val; this.friendly(); break;
-      case 'start': app.startFriendly(this.pick ?? 0); break;
+      case 'pickOpp': this.opp = +val; this.friendly(); break;
+      case 'start': app.startFriendly(this.pick ?? 0, this.opp ?? 1); break;
+      case 'club': app.clubEditor.open(); break;
       case 'settings': this.settings(this.screen); break;
       case 'help': this.help(this.screen); break;
       case 'back': {
@@ -278,10 +268,12 @@ export class Menus {
       case 'resume': app.resume(); break;
       case 'quit': app.toMenu(); break;
       case 'nextPeriod': app.nextPeriod(); break;
-      default: break;
+      default: app.clubEditor.onAction(act, val); break;
     }
   }
 }
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 function clockText(s) {
   s = Math.max(0, Math.floor(s));

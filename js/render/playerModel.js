@@ -6,6 +6,8 @@
 // Zwei-Gelenk-IK an den Schläger geführt.
 
 import * as THREE from 'three';
+import { drawLogo } from '../club/logo.js';
+import { GOLD } from '../club/looks.js';
 
 const DOWN = new THREE.Vector3(0, -1, 0);
 const L_UA = 0.27, L_FA = 0.27, L_TH = 0.44, L_SH = 0.44;
@@ -39,6 +41,9 @@ function geos() {
     grip: (() => { const g = new THREE.CylinderGeometry(0.017, 0.017, 0.22, 6); g.translate(0, -0.11, 0); return g; })(),
     blade: (() => { const g = new THREE.BoxGeometry(0.27, 0.075, 0.02); g.translate(0.11, 0.035, 0); return g; })(),
     // Goalie-Ausrüstung
+    hairLong: (() => { const g = new THREE.BoxGeometry(0.08, 0.2, 0.2); g.translate(-0.085, -0.05, 0); return g; })(),
+    hairCurl: new THREE.SphereGeometry(0.045, 6, 5),
+    hairMohawk: (() => { const g = new THREE.BoxGeometry(0.2, 0.06, 0.035); g.translate(-0.01, 0.11, 0); return g; })(),
     helmet: new THREE.SphereGeometry(0.13, 16, 12),
     mask: new THREE.SphereGeometry(0.135, 12, 8, -Math.PI * 0.35, Math.PI * 0.7, Math.PI * 0.25, Math.PI * 0.5),
     glove: new THREE.SphereGeometry(0.07, 10, 8),
@@ -54,7 +59,7 @@ function mat(color, opts = {}) {
   return matCache.get(key);
 }
 
-function jerseyTexture(colors, number, goalie) {
+function jerseyTexture(colors, number, goalie, logo) {
   const c = document.createElement('canvas');
   c.width = 256; c.height = 128;
   const g = c.getContext('2d');
@@ -80,7 +85,13 @@ function jerseyTexture(colors, number, goalie) {
   g.font = 'bold 70px Arial, sans-serif';
   g.strokeText(String(number), 192, 70); g.fillText(String(number), 192, 70); // Rücken (gross, u = 0.75)
   g.font = 'bold 30px Arial, sans-serif';
-  g.strokeText(String(number), 64, 52); g.fillText(String(number), 64, 52);   // Brust (klein, u = 0.25)
+  if (logo) {
+    drawLogo(g, logo, 64, 44, 34);                                              // Logo auf der Brust
+    g.font = 'bold 24px Arial, sans-serif';
+    g.strokeText(String(number), 64, 86); g.fillText(String(number), 64, 86);
+  } else {
+    g.strokeText(String(number), 64, 52); g.fillText(String(number), 64, 52);   // Brust (klein, u = 0.25)
+  }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
@@ -88,7 +99,7 @@ function jerseyTexture(colors, number, goalie) {
 }
 
 export class PlayerModel {
-  constructor({ colors, number, stick, stickSide = 'L', goalie = false, referee = false, seed = 1, shadows = true }) {
+  constructor({ colors, number, stick, stickSide = 'L', goalie = false, referee = false, seed = 1, shadows = true, look = null, favorite = false, logo = null }) {
     const g = geos();
     this.goalie = goalie;
     this.hs = stickSide === 'L' ? 1 : -1;
@@ -99,12 +110,13 @@ export class PlayerModel {
     this.root.add(this.body);
     this.body.position.y = 0.95;
 
-    const skin = mat(SKIN[seed % SKIN.length]);
-    const hair = mat(HAIR[(seed * 7) % HAIR.length]);
+    const skin = mat(look ? look.skin : SKIN[seed % SKIN.length]);
+    const hair = mat(look ? look.hair : HAIR[(seed * 7) % HAIR.length]);
+    const hairStyle = look ? look.hairStyle : 'kurz';
     const shorts = mat(colors.shorts);
     const socks = mat(goalie ? colors.goalie : colors.socks);
     const shoe = mat(0x222222);
-    const jersey = new THREE.MeshStandardMaterial({ map: jerseyTexture(colors, number, goalie), roughness: 0.8 });
+    const jersey = new THREE.MeshStandardMaterial({ map: jerseyTexture(colors, number, goalie, referee ? null : logo), roughness: 0.8 });
     this.jerseyMat = jersey;
     const meshes = [];
     const add = (parent, geo, m, pos) => {
@@ -129,7 +141,15 @@ export class PlayerModel {
       add(this.head, g.mask, mat(0x222222, { wireframe: true }));
     } else {
       add(this.head, g.head, skin);
-      add(this.head, g.hair, hair, [-0.012, 0.012, 0]);
+      if (hairStyle === 'irokese') add(this.head, g.hairMohawk, hair);
+      else if (hairStyle !== 'glatze') add(this.head, g.hair, hair, [-0.012, 0.012, 0]);
+      if (hairStyle === 'lang') add(this.head, g.hairLong, hair);
+      if (hairStyle === 'locken') {
+        for (let i = 0; i < 9; i++) {
+          const a = (i / 9) * Math.PI * 2;
+          add(this.head, g.hairCurl, hair, [Math.cos(a) * 0.075 - 0.02, 0.07 + (i % 2) * 0.03, Math.sin(a) * 0.085]);
+        }
+      }
     }
 
     // Arme (Schulter → Ellbogen → Hand)
@@ -168,9 +188,11 @@ export class PlayerModel {
     if (!goalie && !referee) {
       this.stick = new THREE.Group();
       this.root.add(this.stick);
-      add(this.stick, g.shaft, mat(stick.shaft, { roughness: 0.4 }));
+      // Lieblingsspieler: goldener Schläger (glänzend, gut sichtbar)
+      const gold = favorite ? mat(GOLD, { roughness: 0.3, metalness: 0.35, emissive: 0x8a6200 }) : null;
+      add(this.stick, g.shaft, gold || mat(stick.shaft, { roughness: 0.4 }));
       add(this.stick, g.grip, mat(0x111111));
-      this.bladeMesh = add(this.stick, g.blade, mat(stick.blade, { roughness: 0.45 }), [0, -SHAFT, 0]);
+      this.bladeMesh = add(this.stick, g.blade, gold || mat(stick.blade, { roughness: 0.45 }), [0, -SHAFT, 0]);
     }
     for (const m of meshes) { m.castShadow = shadows; m.receiveShadow = false; }
 

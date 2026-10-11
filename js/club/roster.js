@@ -1,5 +1,7 @@
 // Spieler und Kader erzeugen. Alle Namen sind erfunden.
 
+import { randomLook } from './looks.js';
+
 const FIRST = ['Luca', 'Noah', 'Jan', 'Nico', 'Lars', 'Timo', 'Simon', 'Fabian', 'Levin', 'Robin',
   'Elias', 'Joel', 'Silvan', 'Dario', 'Reto', 'Marco', 'Andrin', 'Gian', 'Nils', 'Cyrill',
   'Yannick', 'Matteo', 'Livio', 'Florian', 'Sandro', 'Pascal', 'Remo', 'Jonas', 'Mika', 'Lenny',
@@ -36,6 +38,8 @@ export function makePlayer(rand, pos, level, number, stick) {
     stickSide: rand() < 0.6 ? 'L' : 'R',
     stick: { ...stick },
     celebration: Math.floor(rand() * 10),
+    // eigener Zufall fürs Aussehen, damit Namen und Werte gleich bleiben
+    look: randomLook(rng(idCounter * 7919 + number * 104729)),
     stats: {
       tempo: r(), schuss: r(), pass: r(), ausdauer: r(), zweikampf: r(), technik: r(),
       reflexe: r(), stellung: r(),
@@ -48,7 +52,9 @@ export function makePlayer(rand, pos, level, number, stick) {
 }
 
 // Kader: 3 Linien (C, F links, F rechts, D links, D rechts) + 2 Goalies + 3 Ersatz
-export function makeTeam({ name, short, colors, stick, level = 60, seed = 1 }) {
+export function makeTeam({ name, short, colors, kits, logo, stick, level = 60, seed = 1 }) {
+  kits = kits || { home: colors, away: colors };
+  colors = colors || kits.home;
   const rand = rng(seed);
   const used = new Set();
   const num = (pref) => {
@@ -77,7 +83,8 @@ export function makeTeam({ name, short, colors, stick, level = 60, seed = 1 }) {
   const subs = [makePlayer(rand, 'F', level - 10, num(0), stick), makePlayer(rand, 'D', level - 10, num(0), stick),
     makePlayer(rand, 'C', level - 10, num(0), stick)];
   players.push(...subs);
-  return { name, short, colors, players, lines, goalies: [g1.id, g2.id], subs: subs.map(p => p.id) };
+  for (const p of players) p.look = randomLook(rng(seed * 977 + p.number * 31));
+  return { name, short, colors, kits, logo, players, lines, goalies: [g1.id, g2.id], subs: subs.map(p => p.id) };
 }
 
 // Zwei Teams für das Freundschaftsspiel (Etappe 1)
@@ -85,12 +92,20 @@ export function defaultTeams() {
   return [
     makeTeam({
       name: 'UHC Alpenblitz', short: 'ALB', seed: 11, level: 62,
-      colors: { shirt: '#d42a2a', shirt2: '#ffffff', shorts: '#1b1b1f', socks: '#d42a2a', number: '#ffffff', goalie: '#2c2c34' },
+      kits: {
+        home: { shirt: '#d42a2a', shirt2: '#ffffff', shorts: '#1b1b1f', socks: '#d42a2a', number: '#ffffff', goalie: '#2c2c34' },
+        away: { shirt: '#f4f4f4', shirt2: '#d42a2a', shorts: '#d42a2a', socks: '#f4f4f4', number: '#d42a2a', goalie: '#2c2c34' },
+      },
+      logo: { shape: 'shield', bg: '#d42a2a', border: '#ffffff', symbol: 'bolt', symbolColor: '#ffd400', initials: 'ALB', textColor: '#ffffff' },
       stick: { shaft: '#f2f2f2', blade: '#d42a2a' },
     }),
     makeTeam({
       name: 'Floorball Seewölfe', short: 'SEE', seed: 27, level: 62,
-      colors: { shirt: '#1f5fbf', shirt2: '#ffd400', shorts: '#ffffff', socks: '#1f5fbf', number: '#ffd400', goalie: '#11743a' },
+      kits: {
+        home: { shirt: '#1f5fbf', shirt2: '#ffd400', shorts: '#ffffff', socks: '#1f5fbf', number: '#ffd400', goalie: '#11743a' },
+        away: { shirt: '#ffd400', shirt2: '#1f5fbf', shorts: '#1f5fbf', socks: '#ffd400', number: '#1f5fbf', goalie: '#11743a' },
+      },
+      logo: { shape: 'circle', bg: '#1f5fbf', border: '#ffd400', symbol: 'wolf', symbolColor: '#ffffff', initials: 'SEE', textColor: '#ffd400' },
       stick: { shaft: '#111111', blade: '#ffd400' },
     }),
   ];

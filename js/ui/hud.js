@@ -83,7 +83,7 @@ export class Hud {
       r.row.style.display = p ? '' : 'none';
       if (!p) return;
       r.role.textContent = ROLE_LABEL[p.role];
-      r.num.textContent = p.data.number;
+      r.num.textContent = (t.data.favorite === p.id ? '★' : '') + p.data.number;
       const s = Math.round(p.stamina * 100);
       r.bar.style.width = s + '%';
       r.bar.style.background = s > 60 ? '#3ddc84' : s > 35 ? '#ffc93c' : '#ff5a4f';
