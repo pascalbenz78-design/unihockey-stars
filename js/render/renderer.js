@@ -6,6 +6,8 @@ import { CONFIG } from '../config.js';
 import { Arena } from './arena.js';
 import { PlayerModel } from './playerModel.js';
 import { HALF_W } from '../match/field.js';
+import { frameAt } from '../match/replay.js';
+import { penaltyBox } from '../match/rules.js';
 
 const CAM = CONFIG.camera;
 
@@ -77,6 +79,16 @@ export class Renderer {
     this.passMarker.position.y = 0.011;
     this.scene.add(this.passMarker);
 
+    // Schiedsrichter (nur Optik)
+    this.refs = [0, 1].map(i => {
+      const model = new PlayerModel({
+        colors: { shirt: '#151515', shirt2: '#151515', shorts: '#151515', socks: '#151515', number: '#fff', goalie: '#151515', stripes: '#f2f2f2' },
+        number: '', referee: true, seed: 40 + i, shadows: this.q.shadows > 0,
+      });
+      this.scene.add(model.root);
+      return { model, x: 0, y: (i ? 1 : -1) * 8.7, action: 'idle', t: 0 };
+    });
+
     this.time = 0;
     this.excitement = 0;
     this.resize();
@@ -135,44 +147,60 @@ export class Renderer {
     if (!m) { this.renderer.render(this.scene, this.camera); return; }
     const leaving = new Set(m.leaving.map(l => l.p));
     const ctl = m.human ? m.human.controlled : null;
+    // Wiederholung: Zustand aus der Aufzeichnung statt live
+    const frame = m.state === 'replay' && m.replay ? frameAt(m.replay.frames, m.replay.t) : null;
+    this.frame = frame;
 
     for (const t of m.teams) {
       for (const p of t.players.values()) {
         const e = this.models.get(p);
         const md = e.model;
-        let visible = p.onField || leaving.has(p);
-        let x = p.x, y = p.y, facing = p.facing, speed = p.speed;
-        let action = p.anim.action, at = p.anim.t;
-        if (!visible && this.q.bench) {
+        let st;
+        if (frame) {
+          st = frame.players.get(p);
+        } else if (p.onField || leaving.has(p)) {
+          st = {
+            x: p.x, y: p.y, facing: p.facing, speed: p.speed, action: p.anim.action, t: p.anim.t, dir: p.anim.dir,
+            charge: p.charge, holding: p.isGoalie && m.ball.owner === p,
+          };
+        }
+        if (!st && p.inBox) {
+          // sitzt auf der Strafbank
+          const box = penaltyBox(t);
+          st = { x: box.x, y: box.y, facing: -Math.PI / 2, speed: 0, action: 'idle', t: this.time, dir: 0 };
+        }
+        if (!st && this.q.bench && !p.injuredNow) {
           // Ersatzspieler stehen hinter der Bande bei der Bank
-          visible = true;
           const slot = e.benchSlot;
           const bx = t.side * CONFIG.field.benchX;
-          x = bx - CONFIG.field.benchLength / 2 + 0.3 + Math.floor(slot / 2) * 0.66;
-          y = HALF_W + 0.95 + (slot % 2) * 0.5;
-          facing = -Math.PI / 2; speed = 0; action = 'idle'; at = this.time;
+          st = {
+            x: bx - CONFIG.field.benchLength / 2 + 0.3 + Math.floor(slot / 2) * 0.66, y: HALF_W + 0.95 + (slot % 2) * 0.5,
+            facing: -Math.PI / 2, speed: 0, action: 'idle', t: this.time, dir: 0,
+          };
         }
-        md.root.visible = visible;
-        if (e.blob) e.blob.visible = visible;
-        if (!visible) continue;
-        md.root.position.set(x, 0, -y);
-        md.root.rotation.y = facing;
+        md.root.visible = !!st;
+        if (e.blob) e.blob.visible = !!st;
+        if (!st) continue;
+        md.root.position.set(st.x, 0, -st.y);
+        md.root.rotation.y = st.facing;
         md.pose({
-          action, t: at, dir: p.anim.dir, speed, charge: p.charge != null ? p.charge / CONFIG.shot.chargeTime : 0,
-          holding: p.isGoalie && m.ball.owner === p,
+          action: st.action, t: st.t, dir: st.dir, speed: st.speed,
+          charge: st.charge != null ? st.charge / CONFIG.shot.chargeTime : 0, holding: st.holding,
         }, dt);
-        if (e.blob) e.blob.position.set(x, 0.006, -y);
+        if (e.blob) e.blob.position.set(st.x, 0.006, -st.y);
       }
     }
 
     // Ball
-    const b = m.ball;
+    const b = frame ? frame.ball : m.ball;
     this.ball.position.set(b.x, Math.max(0.085, b.z + 0.085), -b.y);
     this.ballShadow.position.set(b.x, 0.007, -b.y);
     this.ballShadow.visible = !this.q.shadows || b.z > 0.3;
 
+    this.updateReferees(dt, b);
+
     // Markierungen
-    const showCtl = ctl && ctl.onField && (m.state === 'play' || m.state === 'faceoff');
+    const showCtl = ctl && ctl.onField && (m.state === 'play' || m.state === 'faceoff' || m.state === 'shootout');
     this.marker.visible = this.arrow.visible = !!showCtl;
     this.chargeRing.visible = false;
     if (showCtl) {
@@ -186,20 +214,21 @@ export class Renderer {
         this.chargeRing.material.color.setHSL(0.15 - c * 0.15, 1, 0.55);
       }
     }
-    const pt = b.pass && !b.owner && b.pass.to && b.pass.to.onField && m.human && b.pass.to.team === m.human.team ? b.pass.to : null;
+    const mb = m.ball;
+    const pt = !frame && mb.pass && !mb.owner && mb.pass.to && mb.pass.to.onField && m.human && mb.pass.to.team === m.human.team ? mb.pass.to : null;
     this.passMarker.visible = !!pt;
     if (pt) { this.passMarker.position.x = pt.x; this.passMarker.position.z = -pt.y; }
 
     // Anzeigetafel
     const [ta, tb] = m.teams;
-    this.arena.setScoreboard(ta.data.short, ta.score, tb.data.short, tb.score, m.clockText(), m.period);
+    this.arena.setScoreboard(ta.data.short, ta.score, tb.data.short, tb.score, m.shootout ? 'PEN' : m.clockText(), m.isOT ? 'V' : m.period);
 
     // Publikum: Aufregung bei Torchancen und Toren
     let want = 0.1;
     const gx = Math.abs(b.x);
     if (gx > 10) want = 0.25 + (gx - 10) / 10;
-    if (b.shot) want = 0.8;
-    if (m.state === 'goal') want = 1.2;
+    if (mb.shot) want = 0.8;
+    if (m.state === 'goal' || m.state === 'celebrate') want = 1.2;
     this.excitement += (want - this.excitement) * Math.min(1, dt * 2.5);
     this.arena.updateCrowd(this.time, this.excitement);
 
@@ -207,22 +236,72 @@ export class Renderer {
     this.renderer.render(this.scene, this.camera);
   }
 
+  // Zwei Schiedsrichter laufen an den Längsseiten mit; bei Strafen Arm hoch
+  updateReferees(dt, b) {
+    const m = this.match;
+    const signal = m.rules && m.rules.signalUntil > m.time;
+    const k = 1 - Math.exp(-2.2 * dt);
+    this.refs.forEach((r, i) => {
+      const side = i === 0 ? -1 : 1;
+      const tx = Math.max(-15, Math.min(15, b.x + side * 4.5));
+      const ty = side * (HALF_W - 1.3);
+      const ox = r.x, oy = r.y;
+      r.x += (tx - r.x) * k; r.y += (ty - r.y) * k;
+      const v = Math.hypot(r.x - ox, r.y - oy) / Math.max(dt, 1e-3);
+      const facing = Math.atan2(b.y - r.y, b.x - r.x);
+      r.model.root.visible = !m.shootout;
+      r.model.root.position.set(r.x, 0, -r.y);
+      r.model.root.rotation.y = facing;
+      const act = signal && i === (b.y > 0 ? 1 : 0) ? 'signal' : v > 0.5 ? 'run' : 'idle';
+      if (act !== r.action) { r.action = act; r.t = 0; }
+      r.t += dt;
+      r.model.pose({ action: act, t: r.t, dir: 0, speed: v, charge: 0 }, dt);
+    });
+  }
+
   updateCamera(dt, extra) {
-    const m = this.match, b = m.ball;
+    const m = this.match, b = this.frame ? this.frame.ball : m.ball;
     if (this.debugCam) {
       this.camera.position.set(...this.debugCam.pos);
       this.camera.lookAt(...this.debugCam.look);
       return;
     }
-    let tx = b.x + b.vx * CAM.lookAhead, ty = b.y + b.vy * CAM.lookAhead;
-    if (b.owner) { tx = b.owner.x + b.owner.vx * 0.4; ty = b.owner.y + b.owner.vy * 0.3; }
+    // Wiederholung: erst tief von der Seite, dann hinter dem Tor
+    if (m.state === 'replay' && m.replay) {
+      const r = m.replay;
+      const f = (r.t - r.start) / Math.max(0.01, r.end - r.start);
+      if (f < 0.5) {
+        this.camera.position.set(b.x - 3.5, 2.3, -b.y + 7.5);
+      } else {
+        const s = r.side;
+        this.camera.position.set(s * 21.1, 2.4, -b.y * 0.3 + 1.6);
+      }
+      this.camera.lookAt(b.x, 0.5, -b.y);
+      this.camTarget.set(b.x, 0, -b.y * 0.55);
+      return;
+    }
+    // Jubel: näher beim Torschützen
+    if (m.state !== 'celebrate') this._celebFor = null;
+    if (m.state === 'celebrate' && m.celebrator) {
+      const s = m.celebrator;
+      if (this._celebFor !== s) { this._celebFor = s; this.camTarget.set(s.x, 0, -s.y); }
+      const k = 1 - Math.exp(-3 * dt);
+      this.camTarget.x += (s.x - this.camTarget.x) * k;
+      this.camTarget.z += (-s.y - this.camTarget.z) * k;
+      this.camera.position.set(this.camTarget.x + 1.5, 3.6, this.camTarget.z + 7.5);
+      this.camera.lookAt(this.camTarget.x, 1.0, this.camTarget.z);
+      return;
+    }
+    let tx = b.x + (b.vx || 0) * CAM.lookAhead, ty = b.y + (b.vy || 0) * CAM.lookAhead;
+    const owner = m.ball.owner;
+    if (owner) { tx = owner.x + owner.vx * 0.4; ty = owner.y + owner.vy * 0.3; }
     tx = Math.max(-CAM.maxX, Math.min(CAM.maxX, tx));
     ty = Math.max(-5, Math.min(6, ty));
     const k = 1 - Math.exp(-CAM.follow * dt);
     this.camTarget.x += (tx - this.camTarget.x) * k;
     this.camTarget.z += (-ty * 0.55 - this.camTarget.z) * k;
     const dist = CAM.distance * this.distMul;
-    const zoom = m.state === 'goal' ? 0.82 : 1;
+    const zoom = m.state === 'goal' ? 0.82 : m.shootout ? 0.85 : 1;
     this.camera.position.set(this.camTarget.x * 0.92, CAM.height * this.distMul * zoom, this.camTarget.z + dist * zoom);
     this.camera.lookAt(this.camTarget.x, 0, this.camTarget.z - 1.2);
   }

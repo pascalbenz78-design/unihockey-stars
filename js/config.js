@@ -2,7 +2,7 @@
 // Geschwindigkeiten in m/s. Spielerwerte (Tempo, Schuss …) gehen von 1 bis 99.
 
 export const CONFIG = {
-  version: '0.1.0',
+  version: '0.2.0',
 
   field: {
     length: 40,
@@ -29,7 +29,15 @@ export const CONFIG = {
     periods: 3,
     periodGameSeconds: 1200, // 20:00
     periodRealSeconds: 180,  // dauert real 3 Minuten
-    goalPause: 3.2,          // Jubel bis zum Bully
+    goalPause: 3.2,          // Jubel bis zum Bully (ohne Wiederholung)
+    goalLive: 1.1,           // nach dem Tor kurz live weiter, dann Wiederholung
+    replaySeconds: 3,        // Länge der Wiederholung vor dem Tor
+    replayAfter: 0.7,        // so viel nach dem Tor wird noch gezeigt
+    replaySpeed: 0.5,        // Zeitlupe
+    celebration: 4,          // Jubel des Torschützen
+    penaltyPause: 2.6,       // Unterbruch bei Strafe
+    otGameSeconds: 300,      // Verlängerung 5:00 (Sudden Death)
+    otRealSeconds: 45,
     faceoffDelay: 1.3,
     outOfPlayPause: 1.2,
   },
@@ -131,6 +139,35 @@ export const CONFIG = {
     minHold: 0.7,            // so lange hält die KI den Ball mindestens (ausser bei starkem Druck)
     teammateSkill: 0.8,      // eigene Mitspieler
   },
+
+  rules: {
+    penaltyGameSeconds: 120, // 2-Minuten-Strafe
+    maxPenalized: 2,         // höchstens 2 Spieler gleichzeitig weniger
+    foulBase: 0.0024,         // Foulchance pro Stockeinsatz (vor Faktoren)
+    foulBehind: 2.8,         // von hinten
+    foulFront: 0.5,          // von vorne
+    foulTired: 1.3,          // + bei leerer Ausdauer
+    foulMiss: 1.7,           // missglückter Stockeinsatz
+    foulHuman: 1.0,          // Faktor für den vom Menschen gesteuerten Spieler
+    highStick: 0.03,         // hoher Stock beim Schuss, wenn Gegner direkt vor einem steht
+    interference: 0.06,      // Behinderung pro Sekunde Körperkontakt mit einem Passempfänger
+    advantageMax: 6,         // so lange läuft der Vorteil höchstens (Sekunden real)
+    fallChance: 0.35,        // gefoulter Spieler stürzt
+    injuryBase: 0.0005,      // Verletzungsrisiko pro Zweikampf bei Härte 1
+    injuryTired: 2.5,        // Müdigkeit erhöht das Risiko stark
+    collisionSpeed: 4.5,     // ab dieser Aufprallgeschwindigkeit zählt ein Zusammenprall als Zweikampf
+    fatigueInjury: 0.002,    // pro Sekunde Sprint mit fast leerer Ausdauer
+    injuryGames: { leicht: [1, 2], mittel: [3, 5], schwer: [6, 10] },
+  },
+
+  shootout: {
+    rounds: 3,
+    attemptTime: 8,          // Sekunden real pro Penalty
+    readyTime: 1.4,
+    resultTime: 1.8,
+  },
+
+  points: { win: 3, winOT: 2, lossOT: 1, loss: 0 },
 
   difficulty: {
     leicht: { label: 'Leicht', skill: 0.55, tempo: 0.88, goalie: 0.85, injury: 0.5 },

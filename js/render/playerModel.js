@@ -60,6 +60,14 @@ function jerseyTexture(colors, number, goalie) {
   const g = c.getContext('2d');
   g.fillStyle = goalie ? colors.goalie : colors.shirt;
   g.fillRect(0, 0, 256, 128);
+  if (colors.stripes) {
+    // Schiedsrichter: senkrechte Streifen, keine Nummer
+    g.fillStyle = colors.stripes;
+    for (let x = 0; x < 256; x += 32) g.fillRect(x, 0, 16, 128);
+    const tx = new THREE.CanvasTexture(c);
+    tx.colorSpace = THREE.SRGBColorSpace;
+    return tx;
+  }
   // Schulterpartie und Seitenstreifen
   g.fillStyle = colors.shirt2;
   g.fillRect(0, 0, 256, 16);
@@ -70,9 +78,9 @@ function jerseyTexture(colors, number, goalie) {
   g.lineWidth = 3;
   g.textAlign = 'center'; g.textBaseline = 'middle';
   g.font = 'bold 70px Arial, sans-serif';
-  g.strokeText(String(number), 192, 70); g.fillText(String(number), 192, 70);
+  g.strokeText(String(number), 192, 70); g.fillText(String(number), 192, 70); // Rücken (gross, u = 0.75)
   g.font = 'bold 30px Arial, sans-serif';
-  g.strokeText(String(number), 64, 52); g.fillText(String(number), 64, 52);
+  g.strokeText(String(number), 64, 52); g.fillText(String(number), 64, 52);   // Brust (klein, u = 0.25)
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
@@ -80,7 +88,7 @@ function jerseyTexture(colors, number, goalie) {
 }
 
 export class PlayerModel {
-  constructor({ colors, number, stick, stickSide = 'L', goalie = false, seed = 1, shadows = true }) {
+  constructor({ colors, number, stick, stickSide = 'L', goalie = false, referee = false, seed = 1, shadows = true }) {
     const g = geos();
     this.goalie = goalie;
     this.hs = stickSide === 'L' ? 1 : -1;
@@ -157,7 +165,7 @@ export class PlayerModel {
     }
 
     // Schläger (nicht beim Goalie)
-    if (!goalie) {
+    if (!goalie && !referee) {
       this.stick = new THREE.Group();
       this.root.add(this.stick);
       add(this.stick, g.shaft, mat(stick.shaft, { roughness: 0.4 }));
@@ -201,6 +209,7 @@ export class PlayerModel {
     const heel = this._heel.set(0.39, 0, -0.2 * hs);
     let heelOnFloor = true;
     let leftHand = null, rightHand = null; // feste Handziele (Goalie, Jubel)
+    let stickMode = null, kneel = false, fixedY = false, jump = 0;
 
     lean = 0.15 + run * 0.22;
     heel.z += Math.sin(ph * 0.5) * 0.08 * run;
@@ -264,6 +273,28 @@ export class PlayerModel {
         heel.set(0.9, 0, -0.5 * hs);
         break;
       }
+      case 'celebrate': {
+        const c = celebrationPose(s.dir | 0, t);
+        const b = c.b;
+        if (b.lean != null) lean = b.lean;
+        if (b.roll != null) roll = b.roll;
+        if (b.sideShift != null) sideShift = b.sideShift;
+        if (b.crouch != null) crouch = b.crouch;
+        if (b.legSwing != null) legSwing = b.legSwing;
+        if (b.twist != null) twist = b.twist;
+        if (b.bodyY != null) bodyY = b.bodyY;
+        jump = b.jump || 0;
+        leftHand = c.left; rightHand = c.right; stickMode = c.stick;
+        kneel = c.kneel; fixedY = c.fixedY;
+        heelOnFloor = false;
+        break;
+      }
+      case 'signal': {
+        rightHand = new THREE.Vector3(0.05, 2.2, 0.22);
+        leftHand = new THREE.Vector3(0.1, 0.8, -0.3);
+        lean = 0.05;
+        break;
+      }
       default: break;
     }
 
@@ -299,9 +330,11 @@ export class PlayerModel {
       const kneeBend = crouch * 2 + Math.max(0, -Math.sin(ph + (sgn > 0 ? 0 : Math.PI))) * 0.9 * run;
       leg.knee.rotation.z = -kneeBend;
       leg.hip.rotation.x = -leg.side * spread;
+      if (kneel) { leg.hip.rotation.z = 0.05; leg.knee.rotation.z = -1.55; leg.hip.rotation.x = -leg.side * 0.12; }
     }
     const legH = L_TH * Math.cos(crouch) + L_SH * Math.cos(crouch * 1) * Math.cos(spread);
-    if (s.action !== 'cheer' && s.action !== 'fall') bodyY = 0.07 + legH * (this.goalie ? 0.96 : 1) + Math.abs(Math.sin(ph)) * 0.04 * run;
+    if (s.action !== 'cheer' && s.action !== 'fall' && !fixedY) bodyY = 0.07 + legH * (this.goalie ? 0.96 : 1) + Math.abs(Math.sin(ph)) * 0.04 * run;
+    bodyY += jump;
 
     this.body.position.set(0, bodyY, sideShift);
     this.body.rotation.set(roll, 0, -lean * 0.5);
@@ -309,8 +342,15 @@ export class PlayerModel {
     this.head.rotation.set(0, -twist * 0.6, lean * 0.6);
 
     // Schläger ausrichten
-    if (this.stick) {
+    if (this.stick && stickMode && stickMode.hand) {
+      // Schläger in einer Hand (Jubel)
+      const hand = stickMode.hand === 'R' ? rightHand : leftHand;
+      grip.copy(hand);
+      if (stickMode.offset) grip.add(stickMode.offset);
+      this.orientStick(grip, grip.clone().addScaledVector(stickMode.dir.clone().normalize(), SHAFT));
+    } else if (this.stick) {
       let end;
+      if (stickMode && stickMode.both) { grip.copy(stickMode.grip); heel.copy(stickMode.heel); }
       if (heelOnFloor) {
         // Griffhöhe so wählen, dass die Kelle genau am Ziel auf dem Boden liegt
         const hd = Math.min(SHAFT * 0.85, Math.hypot(heel.x - grip.x, heel.z - grip.z));
@@ -319,16 +359,7 @@ export class PlayerModel {
       } else {
         end = this._tmp.copy(heel);
       }
-      const dir = end.sub(grip).normalize();             // Griff → Kelle
-      const yAxis = dir.clone().negate();                // Schaft nach oben
-      let xAxis = new THREE.Vector3(1, 0, 0);
-      xAxis.sub(yAxis.clone().multiplyScalar(xAxis.dot(yAxis)));
-      if (xAxis.lengthSq() < 1e-4) xAxis.set(0, 0, 1);
-      xAxis.normalize();
-      const zAxis = new THREE.Vector3().crossVectors(xAxis, yAxis);
-      this._m.makeBasis(xAxis, yAxis, zAxis);
-      this.stick.quaternion.setFromRotationMatrix(this._m);
-      this.stick.position.copy(grip);
+      const dir = this.orientStick(grip, end);
       // Handziele: oberste Hand am Griff, untere Hand weiter unten
       const top = grip.clone();
       const low = grip.clone().addScaledVector(dir, 0.42);
@@ -345,6 +376,98 @@ export class PlayerModel {
       solveArm(arm, tl);
     }
   }
+}
+
+// Schläger vom Griff zur Kelle ausrichten, gibt die Richtung zurück
+PlayerModel.prototype.orientStick = function (grip, end) {
+  const dir = end.clone().sub(grip).normalize();     // Griff → Kelle
+  const yAxis = dir.clone().negate();                // Schaft nach oben
+  const xAxis = new THREE.Vector3(1, 0, 0);
+  xAxis.sub(yAxis.clone().multiplyScalar(xAxis.dot(yAxis)));
+  if (xAxis.lengthSq() < 1e-4) xAxis.set(0, 0, 1);
+  xAxis.normalize();
+  const zAxis = new THREE.Vector3().crossVectors(xAxis, yAxis);
+  this._m.makeBasis(xAxis, yAxis, zAxis);
+  this.stick.quaternion.setFromRotationMatrix(this._m);
+  this.stick.position.copy(grip);
+  return dir;
+};
+
+// Jubel-Posen (Handziele im Modellraum: x vorne, y oben, z rechts)
+function celebrationPose(id, t) {
+  const V = (x, y, z) => new THREE.Vector3(x, y, z);
+  const b = {};
+  let left, right, stick = null, kneel = false, fixedY = false;
+  switch (id) {
+    case 1: { // Knierutscher
+      if (t < 0.75) { right = V(0.1, 1.2, 0.35); left = V(0.2, 1.0, -0.3); stick = { hand: 'R', dir: V(0.4, -0.9, 0.1) }; }
+      else {
+        kneel = true; fixedY = true; b.bodyY = 0.58; b.lean = -0.35; b.legSwing = 0;
+        right = V(0.05, 1.42, 0.62); left = V(0.05, 1.42, -0.62);
+        stick = { hand: 'R', dir: V(0.2, 0.95, 0.25) };
+      }
+      break;
+    }
+    case 2: { // Schläger hochhalten
+      const bob = Math.sin(t * 6) * 0.05;
+      stick = { both: true, grip: V(0.05, 2.0 + bob, 0.45), heel: V(0.05, 2.05 + bob, -0.6) };
+      b.lean = -0.12; b.crouch = 0.12;
+      break;
+    }
+    case 3: // Flieger
+      right = V(-0.05, 1.32, 0.78); left = V(-0.05, 1.32, -0.78);
+      stick = { hand: 'R', dir: V(-0.1, 0.05, 1) };
+      b.roll = 0.28; b.lean = 0.25;
+      break;
+    case 4: { // Tänzchen
+      const k = Math.sin(t * 8);
+      right = V(0.2, 1.25 - 0.35 * k, 0.4); left = V(0.2, 1.25 + 0.35 * k, -0.4);
+      stick = { hand: 'R', dir: V(0.25, -0.95, 0.2) };
+      b.roll = Math.sin(t * 4) * 0.14; b.sideShift = Math.sin(t * 4) * 0.12;
+      b.legSwing = Math.sin(t * 8) * 0.25; b.crouch = 0.2 + 0.08 * Math.abs(k);
+      break;
+    }
+    case 5: // Herz
+      right = V(0.32, 1.38, 0.06); left = V(0.32, 1.38, -0.06);
+      stick = { hand: 'R', dir: V(0.2, -0.95, 0.25) };
+      b.lean = -0.05;
+      break;
+    case 6: { // Sprung
+      const j = Math.max(0, Math.sin(t * 5));
+      b.jump = j * 0.55; b.crouch = j > 0.05 ? 0.15 : 0.45; b.legSwing = 0;
+      right = V(0.1, 2.0 + b.jump, 0.28); left = V(0.1, 2.0 + b.jump, -0.28);
+      stick = { hand: 'R', dir: V(0.1, 0.95, 0.3) };
+      break;
+    }
+    case 7: { // Team-Kreis
+      const j = Math.max(0, Math.sin(t * 7));
+      b.jump = j * 0.2; b.legSwing = 0;
+      right = V(0.1, 1.55 + b.jump, 0.45); left = V(0.1, 1.55 + b.jump, -0.45);
+      stick = { hand: 'R', dir: V(0.3, 0.9, 0.3) };
+      break;
+    }
+    case 8: { // Bogenschütze
+      const rel = t > 1.6;
+      left = V(0.68, 1.42, -0.12);
+      right = rel ? V(-0.25, 1.5, 0.35) : V(-0.05, 1.42, 0.1);
+      stick = { hand: 'L', dir: V(0, -1, 0), offset: V(0, 0.5, 0) };
+      b.twist = 0.45; b.lean = 0; b.legSwing = 0;
+      break;
+    }
+    case 9: // Salutieren
+      right = V(0.14, 1.72, 0.1); left = V(0.05, 0.85, -0.3);
+      stick = { hand: 'L', dir: V(0.25, -0.96, -0.1) };
+      b.lean = -0.05; b.crouch = 0.05; b.legSwing = 0;
+      break;
+    default: { // 0 Faust
+      const pump = Math.max(0, Math.sin(t * 9));
+      right = V(0.2, 1.35 + 0.35 * pump, 0.28); left = V(0.15, 0.9, -0.32);
+      stick = { hand: 'L', dir: V(0.35, -0.93, -0.1) };
+      b.lean = -0.05; b.crouch = 0.25 + 0.1 * pump; b.legSwing = 0;
+      break;
+    }
+  }
+  return { b, left, right, stick, kneel, fixedY };
 }
 
 const _pole = new THREE.Vector3();

@@ -226,7 +226,26 @@ export class Arena {
       const g = new THREE.Mesh(new THREE.BoxGeometry(F.benchLength + 0.6, 0.9, 0.04), glass);
       g.position.set(s * F.benchX, 0.95, -(HALF_W + 2.2));
       this.group.add(g);
+      // Strafbank (zwischen den Spielerbänken)
+      const pb = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.45, 0.5), mat);
+      pb.position.set(s * 1.6, 0.22, -(HALF_W + 1.5));
+      this.group.add(pb);
+      const pg = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.0, 0.04), glass);
+      pg.position.set(s * 1.6, 1.0, -(HALF_W + 2.0));
+      this.group.add(pg);
     }
+    // Schild «Strafbank»
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 48;
+    const g2 = c.getContext('2d');
+    g2.fillStyle = '#111'; g2.fillRect(0, 0, 256, 48);
+    g2.fillStyle = '#ffcf2e'; g2.font = 'bold 28px Arial'; g2.textAlign = 'center'; g2.textBaseline = 'middle';
+    g2.fillText('STRAFBANK', 128, 25);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.45), new THREE.MeshBasicMaterial({ map: tex }));
+    sign.position.set(0, 1.75, -(HALF_W + 2.02));
+    this.group.add(sign);
   }
 
   buildStands() {

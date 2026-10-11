@@ -10,6 +10,7 @@ const diff = process.argv[2] || 'mittel';
 const secs = +process.argv[3] || 180;
 const games = +process.argv[4] || 4;
 const dt = 1 / CONFIG.physics.tickRate;
+let pensH = 0, pensK = 0;
 let tot = { for: 0, against: 0, shots: 0, oppShots: 0, steals: 0, saves: 0 };
 const shotLog = [];
 
@@ -49,6 +50,7 @@ for (let g = 0; g < games; g++) {
     m.step(dt);
     m.takeEvents();
   }
+  pensH += m.rules.log.filter(x => x.team === 0).length; pensK += m.rules.log.filter(x => x.team === 1).length;
   const [a, b] = m.teams;
   console.log(`Spiel ${g + 1}: Mensch ${a.score}:${b.score} KI  Schüsse ${a.stats.shots}:${b.stats.shots}  Paraden KI-Goalie ${b.stats.saves}  Steals KI ${b.stats.steals}`);
   tot.for += a.score; tot.against += b.score; tot.shots += a.stats.shots; tot.oppShots += b.stats.shots; tot.saves += b.stats.saves; tot.steals += b.stats.steals;
@@ -56,3 +58,4 @@ for (let g = 0; g < games; g++) {
 console.log(`Schnitt: ${(tot.for / games).toFixed(1)}:${(tot.against / games).toFixed(1)}, Schüsse ${(tot.shots / games).toFixed(1)}:${(tot.oppShots / games).toFixed(1)}, Paraden KI ${(tot.saves / games).toFixed(1)}, Steals KI ${(tot.steals / games).toFixed(1)}`);
 const avgD = shotLog.reduce((s, x) => s + x.d, 0) / (shotLog.length || 1);
 console.log(`Mensch-Schüsse: ${shotLog.length}, mittlere Distanz ${avgD.toFixed(1)} m`);
+console.log(`Strafen pro Spiel: Mensch-Team ${(pensH / games).toFixed(1)}, KI ${(pensK / games).toFixed(1)}`);

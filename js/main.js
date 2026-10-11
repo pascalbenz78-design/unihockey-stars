@@ -9,6 +9,9 @@ import { Input, isTouchDevice } from './ui/input.js';
 import { Hud } from './ui/hud.js';
 import { Menus } from './ui/menus.js';
 import { loadSettings, saveSettings } from './save/settings.js';
+import { applyTeamPrefs, recordMatchInjuries } from './club/teamStore.js';
+import { celebrationName } from './club/celebrations.js';
+import { FOUL_NAMES, INJURY_NAMES } from './match/rules.js';
 
 const DT = 1 / CONFIG.physics.tickRate;
 
@@ -17,7 +20,7 @@ class App {
     this.settings = loadSettings();
     this.touch = isTouchDevice();
     document.body.classList.toggle('touch', this.touch);
-    this.teams = defaultTeams();
+    this.refreshTeams();
     this.input = new Input();
     this.hud = new Hud();
     this.menus = new Menus(this);
@@ -37,6 +40,9 @@ class App {
     requestAnimationFrame(t => this.frame(t));
   }
 
+  // Teams mit gespeicherten Jubeln und Verletzungen
+  refreshTeams() { this.teams = defaultTeams().map(applyTeamPrefs); }
+
   createRenderer() {
     const old = document.getElementById('game');
     const canvas = document.createElement('canvas');
@@ -51,6 +57,10 @@ class App {
     const t = document.getElementById('touch');
     this.input.bindTouch(document.getElementById('joyzone'), document.getElementById('joyknob'), t.querySelectorAll('[data-act]'));
     t.querySelector('[data-act="pause"]').addEventListener('pointerdown', () => this.pause());
+    // Tippen/Klicken überspringt Wiederholung und Jubel
+    addEventListener('pointerdown', e => {
+      if (this.mode === 'match' && !this.menus.visible && !e.target.closest('#btns-top')) this.skipRequest = true;
+    });
   }
 
   // KI gegen KI im Hintergrund des Hauptmenüs
@@ -63,7 +73,8 @@ class App {
   }
 
   startFriendly(pick) {
-    const teams = defaultTeams();
+    const teams = defaultTeams().map(applyTeamPrefs);
+    this.friendlyTeams = teams;
     if (pick === 1) teams.reverse(); // eigenes Team spielt immer zuerst von links nach rechts
     this.match = new Match({
       teams, humanTeam: 0, difficulty: this.settings.difficulty,
@@ -143,6 +154,11 @@ class App {
     if (this.mode === 'match') {
       const { state, pressed } = this.input.poll();
       if (pressed.pause) { if (this.paused) this.resume(); else this.pause(); }
+      if ((m.state === 'replay' || m.state === 'celebrate') && (this.skipRequest || pressed.shoot || pressed.pass || pressed.bank || pressed.switch)) {
+        m.skip();
+        delete pressed.shoot; delete pressed.pass; delete pressed.bank; delete pressed.switch;
+      }
+      this.skipRequest = false;
       if (!this.paused && m.human) {
         m.human.setInput(state, pressed);
         this.acc += dt;
@@ -173,15 +189,51 @@ class App {
           const own = m.human && e.team === m.human.team;
           const who = g.ownGoal ? 'Eigentor' : `${g.scorer.firstName} ${g.scorer.lastName}`;
           const as = g.assist ? `<small>Assist: ${g.assist.firstName} ${g.assist.lastName}</small>` : '';
-          this.hud.message(`<b>TOR!</b><span>${e.team.data.short} · ${who}</span>${as}`, 3, own ? 'goal own' : 'goal');
+          const pp = g.pp === 'PP' ? '<small>Powerplay-Tor</small>' : g.pp === 'SH' ? '<small>Tor in Unterzahl!</small>' : '';
+          const canc = e.cancelledPenalty ? '<small>Vorteil genutzt – Strafe entfällt</small>' : '';
+          this.hud.message(`<b>TOR!</b><span>${e.team.data.short} · ${who}</span>${as}${pp}${canc}`, 3, own ? 'goal own' : 'goal');
           break;
         }
+        case 'celebrate':
+          if (e.player) this.hud.toast(`Jubel: ${celebrationName(e.player.data.celebration || 0)}`, 2.5);
+          break;
+        case 'foul':
+          if (m.rules.pending) this.hud.toast(`Foul von #${e.offender.data.number} – Vorteil ${e.victim.team.data.short}`, 2.5);
+          break;
+        case 'penalty': {
+          const pl = e.player.data;
+          this.hud.message(`<b>2 MINUTEN</b><span>${e.team.data.short} · #${pl.number} ${pl.firstName} ${pl.lastName}</span><small>${FOUL_NAMES[e.foul]}</small>`, 2.6, 'penalty');
+          break;
+        }
+        case 'penaltyEnd':
+          this.hud.toast(`${e.team.data.short}: Strafe vorbei – wieder komplett`);
+          break;
+        case 'injury': {
+          const pl = e.player.data;
+          const g = e.games === 1 ? 'Spiel' : 'Spiele';
+          this.hud.message(`<b>VERLETZUNG</b><span>${e.team.data.short} · ${pl.firstName} ${pl.lastName}</span><small>${INJURY_NAMES[e.level]} – ${e.games} ${g} Pause</small>`, 3.2, 'injury');
+          break;
+        }
+        case 'shootoutStart':
+          this.hud.message('<b>PENALTYS</b><span>Je 3 Schützen</span>', 2, 'penalty');
+          break;
+        case 'shootoutAttempt': {
+          const own = m.human && e.team === m.human.team;
+          this.hud.message(`<span>${e.team.data.short} · ${e.shooter.data.firstName} ${e.shooter.data.lastName}</span><small>${own ? 'Du schiesst!' : 'Du hältst!'}</small>`, 1.4, 'small');
+          break;
+        }
+        case 'shootoutResult':
+          this.hud.message(e.scored ? '<b>TOR!</b>' : '<b>Gehalten!</b>', 1.6, e.scored ? 'goal' : 'penalty');
+          break;
         case 'periodEnd':
           this.menus.intermission(m);
           break;
-        case 'gameEnd':
-          this.menus.end(m);
+        case 'gameEnd': {
+          const healed = this.friendlyTeams ? recordMatchInjuries(this.friendlyTeams, m.rules.injuries) : [];
+          this.refreshTeams();
+          this.menus.end(m, healed);
           break;
+        }
         case 'lineChange':
           if (m.human && e.team === m.human.team) this.hud.toast(`Linienwechsel → Linie ${e.line + 1}`);
           else this.hud.toast(`${e.team.data.short} wechselt die Linie`);

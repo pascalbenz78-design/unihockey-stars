@@ -35,7 +35,7 @@ export function makePlayer(rand, pos, level, number, stick) {
     pos,                           // 'C' Center, 'F' Flügel, 'D' Verteidiger, 'G' Goalie
     stickSide: rand() < 0.6 ? 'L' : 'R',
     stick: { ...stick },
-    celebration: Math.floor(rand() * 8),
+    celebration: Math.floor(rand() * 10),
     stats: {
       tempo: r(), schuss: r(), pass: r(), ausdauer: r(), zweikampf: r(), technik: r(),
       reflexe: r(), stellung: r(),

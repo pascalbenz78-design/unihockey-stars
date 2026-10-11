@@ -242,3 +242,57 @@ Konkrete Festlegungen während des Baus (Werte stehen in `js/config.js`).
 - Grafik Niedrig: keine Echtzeitschatten (Schattenflecken), weniger Publikum,
   keine Bankspieler, keine Kantenglättung.
 - Publikum springt bei Torchancen und Toren.
+
+### Etappe 2: Strafen
+- Fouls entstehen beim Stockeinsatz (Mensch und KI): von hinten 2.8-mal, bei
+  Müdigkeit, schwacher Zweikampfstärke und missglücktem Einsatz häufiger.
+  Arten: Stockschlag, Halten (von hinten), hoher Stock (beim harten Schuss mit
+  Gegner direkt daneben), Behinderung (Körperkontakt mit einem Passempfänger).
+- Vorteil: Hat das gefoulte Team den Ball, läuft das Spiel weiter (Anzeige
+  «✋ Vorteil», Schiedsrichter hebt den Arm). Pfiff, sobald das foulende Team
+  den Ball berührt (spätestens nach 6 s). Trifft das gefoulte Team während des
+  Vorteils, entfällt die Strafe.
+- 2-Minuten-Strafe (Spielzeit, läuft nur bei laufender Uhr). Der Spieler geht
+  in die Strafbank (zwischen den Spielerbänken), seine Position bleibt leer
+  (4 gegen 5). Höchstens 2 Spieler gleichzeitig weniger; eine dritte Strafe
+  wartet. Ein Powerplay-Tor beendet die Strafe mit der kürzesten Restzeit.
+- Bully nach einer Strafe am Bully-Punkt beim Foulort.
+- KI-Formation bei Unterzahl: 4 Spieler = Box (2 Verteidiger, 2 Flügel),
+  3 Spieler = Dreieck.
+- Zwei Schiedsrichter (nur Optik) laufen an den Längsseiten mit.
+- Etwa 4–5 Strafen pro Spiel, ~1 Powerplay-Tor.
+
+### Etappe 2: Verletzungen
+- Risiko bei jedem Zweikampf (Stockeinsatz) und bei harten Zusammenstössen
+  (ab 4.5 m/s): Grundrisiko × Härte × (1 + 2.5 × Müdigkeit²) × Schwierigkeit.
+  Zusätzlich beim Sprint mit fast leerer Ausdauer.
+- Schweregrad je nach Härte, Müdigkeit und Zufall: leicht 1–2, mittel 3–5,
+  schwer 6–10 Spiele. Der Spieler stürzt, humpelt zur Bank, der beste freie
+  Ersatz (zuerst die 3 Ersatzspieler, passende Position) übernimmt seinen
+  Platz in allen Linien. Goalies verletzen sich nicht.
+- Verletzungen der Freundschaftsspiel-Teams werden lokal gespeichert und nach
+  jedem Spiel um eins heruntergezählt. Verletzte fehlen in der Aufstellung.
+- Etwa 0.3–0.5 Verletzungen pro Spiel (Mittel).
+
+### Etappe 2: Verlängerung und Penaltys
+- Unentschieden nach 60 Minuten: Pause, dann Verlängerung 5:00 (45 s real),
+  Sudden Death, Seitenwechsel. Danach Penaltyschiessen.
+- Penaltyschiessen aufs rechte Tor, Schütze startet an der Mittellinie mit
+  dem Ball, 8 s Zeit, kein Nachschuss (Versuch endet, sobald der Goalie den
+  Ball berührt). Reihenfolge nach Schuss + Technik. Je 3, dann einzeln bis
+  zur Entscheidung; vorzeitig entschieden, wenn uneinholbar.
+- Der Mensch schiesst selbst und hält selbst (Goalie stellt sich ohne Eingabe
+  von allein). KI-Schütze täuscht seitlich an und zielt in die freie Ecke.
+- Sieger nach Penaltys erhält ein Tor mehr im Resultat («n.P.»). Punkte:
+  Sieg 3, Sieg n.V./n.P. 2, Niederlage n.V./n.P. 1 (gespeichert im Resultat
+  für Etappe 4).
+
+### Etappe 2: Wiederholung und Jubel
+- Nach einem Tor läuft das Spiel 1.1 s weiter, dann Wiederholung der letzten
+  3 s (+0.7 s nach dem Tor) in halber Geschwindigkeit: erste Hälfte tiefe
+  Seitenkamera, zweite Hälfte hinter dem Tor. Danach 4 s Jubel des
+  Torschützen mit naher Kamera. Beides mit Taste oder Tippen überspringbar.
+- 10 Jubel: Faust, Knierutscher, Schläger hochhalten, Flieger, Tänzchen, Herz,
+  Sprung, Team-Kreis, Bogenschütze, Salutieren. Mitspieler kommen gratulieren
+  (beim Team-Kreis eng im Kreis). Zuordnung pro Spieler im Menü
+  «Freundschaftsspiel → Jubel zuordnen» (gespeichert).

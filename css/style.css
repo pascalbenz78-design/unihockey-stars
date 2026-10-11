@@ -193,3 +193,38 @@ ul.goals li { padding: 3px 0; }
 }
 /* Auf Touch-Geräten liegt die Ausdaueranzeige oben links, damit der Joystick Platz hat */
 body.touch #lineinfo { bottom: auto; top: max(8px, env(safe-area-inset-top)); }
+
+/* ---------------------------------------------------------------- Etappe 2 */
+#pens {
+  position: absolute; top: calc(max(8px, env(safe-area-inset-top)) + 52px); left: 50%; transform: translateX(-50%);
+  display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; font-size: 13px; font-weight: 700; white-space: nowrap;
+}
+#pens span { padding: 3px 9px; border-radius: 8px; background: rgba(10, 14, 20, 0.8); border: 1px solid var(--line); }
+#pens .pen { border-left: 4px solid var(--c); font-variant-numeric: tabular-nums; }
+#pens .pp { background: #1f7a3f; }
+#pens .bp { background: #9a2a22; }
+#pens .adv { background: #c98a00; color: #111; animation: blink 0.8s infinite alternate; }
+@keyframes blink { from { opacity: 1; } to { opacity: 0.55; } }
+#replay-badge {
+  position: absolute; top: calc(max(8px, env(safe-area-inset-top)) + 54px); left: max(12px, env(safe-area-inset-left));
+  padding: 6px 12px; border-radius: 8px; background: rgba(0, 0, 0, 0.65); display: flex; flex-direction: column;
+}
+#replay-badge b { color: #ff4d4d; letter-spacing: 1px; }
+#replay-badge small { color: #ccd; font-size: 11px; }
+#so-tally {
+  position: absolute; top: calc(max(8px, env(safe-area-inset-top)) + 54px); left: 50%; transform: translateX(-50%);
+  padding: 6px 14px; border-radius: 10px; background: rgba(10, 14, 20, 0.85); border: 1px solid var(--line); font-size: 18px;
+}
+#so-tally div { display: flex; align-items: center; gap: 6px; }
+#so-tally b { width: 46px; font-size: 14px; }
+#so-tally i { font-style: normal; width: 18px; text-align: center; color: #667; }
+#so-tally i.hit { color: var(--ok); }
+#so-tally i.miss { color: #ff5a4f; }
+#msg.penalty b, #msg.injury b { font-size: 44px; color: #ffb300; }
+#msg.injury b { color: #ff6b5a; }
+.cel-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.cel-table td { padding: 4px 6px; border-bottom: 1px solid var(--line); }
+.cel-table select { font: inherit; background: #222b38; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px; }
+.injured { color: #ff8a7a; font-size: 13px; }
+.sum-list { list-style: none; padding: 0; margin: 8px auto 0; max-width: 480px; font-size: 14px; }
+.sum-list li { padding: 2px 0; }

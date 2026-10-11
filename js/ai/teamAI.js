@@ -15,6 +15,7 @@ export function updateTeamAI(team, m, dt) {
   const ball = m.ball, opp = m.other(team), d = team.attackDir;
   const carrier = ball.owner;
   const skaters = team.skaters;
+  team.slotRole = slotRoles(skaters);
   let mode;
   if (carrier) mode = carrier.team === team ? 'attack' : 'defend';
   else if (ball.pass && ball.pass.to && ball.pass.to.team === team && ball.pass.to.onField) mode = 'attack';
@@ -56,7 +57,7 @@ export function updateTeamAI(team, m, dt) {
   for (const p of skaters) {
     const human = m.isHumanControlled(p);
     if (p === carrier) {
-      if (!human) carrierAI(p, team, opp, m, dt);
+      if (!human) { if (m.shootout) m.shootout.aiShooter(p, dt); else carrierAI(p, team, opp, m, dt); }
       continue;
     }
     p.charge = null;
@@ -109,7 +110,7 @@ function attackSlot(p, team, opp, m, bax, bay, carrier) {
   const w = Math.sin(m.time * 0.6 + p.wander) * 1.3;
   const w2 = Math.cos(m.time * 0.45 + p.wander * 1.7) * 1.1;
   let ax, ay;
-  switch (p.role) {
+  switch (roleOf(team, p)) {
     case 'LD': ax = lerp(-13, 3.5, push); ay = 5.2; break;
     case 'RD': ax = lerp(-13, 3.5, push); ay = -5.2; break;
     case 'C': ax = lerp(-5, 9.5, push); ay = 0; break;
@@ -137,7 +138,7 @@ function defendSlot(p, team, m, bax, bay) {
   const deep = clamp((-bax + 4) / 14, 0, 1);
   const shift = clamp(bay * 0.35, -3, 3);
   let ax, ay;
-  switch (p.role) {
+  switch (roleOf(team, p)) {
     case 'LD': ax = lerp(-4, -13.6, deep); ay = 2.6; break;
     case 'RD': ax = lerp(-4, -13.6, deep); ay = -2.6; break;
     case 'C': ax = lerp(1, -10.5, deep); ay = 0; break;
@@ -147,6 +148,17 @@ function defendSlot(p, team, m, bax, bay) {
   ay += shift;
   return keepInside(ax * d, ay * d);
 }
+
+// Bei Unterzahl (Strafe) die Formation anpassen: 4 Spieler = Box, 3 = Dreieck
+function slotRoles(skaters) {
+  const map = new Map();
+  if (skaters.length >= 5) { for (const p of skaters) map.set(p, p.role); return map; }
+  const wanted = skaters.length === 4 ? ['LD', 'RD', 'LW', 'RW'] : ['LD', 'RD', 'C'].slice(0, skaters.length);
+  const free = wanted.filter(r => !skaters.some(p => p.role === r));
+  for (const p of skaters) map.set(p, wanted.includes(p.role) ? p.role : free.shift());
+  return map;
+}
+const roleOf = (team, p) => (team.slotRole && team.slotRole.get(p)) || p.role;
 
 // Jeder Verteidiger übernimmt den gefährlichsten freien Gegner in seiner Nähe
 function assignMarks(team, opp, defenders, marks, carrier, bax, bay) {

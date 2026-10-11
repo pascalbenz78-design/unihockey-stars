@@ -2,6 +2,11 @@
 // Anleitung, Pause, Drittelspause mit Statistik, Spielende.
 
 import { CONFIG } from '../config.js';
+import { CELEBRATIONS } from '../club/celebrations.js';
+import { injuredPlayers, saveCelebration } from '../club/teamStore.js';
+import { FOUL_NAMES, INJURY_NAMES } from '../match/rules.js';
+
+const POS_NAME = { C: 'Center', F: 'Flügel', D: 'Verteidiger', G: 'Goalie' };
 
 export class Menus {
   constructor(app) {
@@ -35,7 +40,7 @@ export class Menus {
         <button data-act="settings">Einstellungen</button>
         <button data-act="help">Anleitung</button>
       </div>
-      <p class="ver">Version ${CONFIG.version} · Etappe 1</p>`, 'main');
+      <p class="ver">Version ${CONFIG.version} · Etappe 2</p>`, 'main');
   }
 
   friendly() {
@@ -49,11 +54,38 @@ export class Menus {
       <h2>Freundschaftsspiel</h2>
       <div class="field-row"><label>Dein Team</label><div class="opts">${teams.map(tbtn).join('')}</div></div>
       <div class="field-row"><label>Schwierigkeit</label><div class="opts">${this.opts('difficulty', CONFIG.difficulty, s.difficulty)}</div></div>
-      <p class="hint">3 Drittel à 20:00 Spielzeit (je 3 Minuten). Du spielst von links nach rechts.</p>
+      <p class="hint">3 Drittel à 20:00 Spielzeit (je 3 Minuten). Bei Unentschieden Verlängerung und Penaltyschiessen.</p>
+      ${this.injuryNote(teams[this.pick])}
       <div class="menu-row">
         <button data-act="main">Zurück</button>
+        <button data-act="celebrations">Jubel zuordnen</button>
         <button class="primary big" data-act="start">Anpfiff!</button>
       </div>`);
+  }
+
+  injuryNote(team) {
+    const inj = injuredPlayers(team);
+    if (!inj.length) return '';
+    return `<p class="injured">Verletzt: ${inj.map(p => `${p.firstName} ${p.lastName} (${INJURY_NAMES[p.injury.level]}, noch ${p.injury.games} ${p.injury.games === 1 ? 'Spiel' : 'Spiele'})`).join(', ')}</p>`;
+  }
+
+  // Jubel pro Spieler wählen (gespeichert)
+  celebrations() {
+    this.screen = 'celebrations';
+    const team = this.app.teams[this.pick ?? 0];
+    const opts = id => CELEBRATIONS.map(c => `<option value="${c.id}" ${c.id === id ? 'selected' : ''}>${c.name}</option>`).join('');
+    const rows = team.players.filter(p => p.pos !== 'G').map(p => `<tr>
+        <td>#${p.number}</td><td>${p.firstName} ${p.lastName}</td><td class="hint">${POS_NAME[p.pos]}</td>
+        <td><select data-cel="${p.id}">${opts(p.celebration || 0)}</select></td></tr>`).join('');
+    this.show(`
+      <h2>Jubel – ${team.name}</h2>
+      <p class="hint">Nach jedem Tor jubelt der Torschütze so. Die Auswahl wird gespeichert.</p>
+      <table class="cel-table">${rows}</table>
+      <div class="menu-row"><button class="primary" data-act="friendly">Fertig</button></div>`, 'wide');
+    this.el.querySelectorAll('select[data-cel]').forEach(sel => sel.addEventListener('change', () => {
+      const pl = team.players.find(x => x.id === +sel.dataset.cel);
+      saveCelebration(team, pl, +sel.value);
+    }));
   }
 
   opts(key, table, cur) {
@@ -133,16 +165,21 @@ export class Menus {
 
   intermission(match) {
     this.screen = 'intermission';
+    const title = match.next === 'ot' ? 'Unentschieden – Verlängerung' : match.next === 'shootout' ? 'Penaltyschiessen' : 'Drittelspause';
+    const sub = match.next === 'ot' ? '5:00 Sudden Death: Das nächste Tor entscheidet.'
+      : match.next === 'shootout' ? 'Je 3 Schützen, danach einzeln weiter. Du steuerst Schütze und Goalie.'
+        : `Nach dem ${match.period}. Drittel`;
+    const btn = match.next === 'ot' ? 'Weiter: Verlängerung' : match.next === 'shootout' ? 'Weiter: Penaltyschiessen' : `Weiter: ${match.period + 1}. Drittel`;
     this.show(`
-      <h2>Drittelspause</h2>
-      <p class="sub">Nach dem ${match.period}. Drittel</p>
+      <h2>${title}</h2>
+      <p class="sub">${sub}</p>
       ${this.scoreLine(match)}
       ${this.statsTable(match)}
       ${this.goalList(match)}
-      <div class="menu-row"><button class="primary big" data-act="nextPeriod">Weiter: ${match.period + 1}. Drittel</button></div>`, 'wide');
+      <div class="menu-row"><button class="primary big" data-act="nextPeriod">${btn}</button></div>`, 'wide');
   }
 
-  end(match) {
+  end(match, healed = []) {
     this.screen = 'end';
     const h = match.human ? match.human.team : null;
     let title = 'Schlussresultat';
@@ -150,15 +187,36 @@ export class Menus {
       const o = match.other(h);
       title = h.score > o.score ? 'Sieg! 🎉' : h.score < o.score ? 'Niederlage' : 'Unentschieden';
     }
+    const r = match.result;
+    const kind = r && r.type === 'ot' ? ' n.V.' : r && r.type === 'so' ? ' n.P.' : '';
+    if (kind) title += ` <small class="hint">(${kind.trim()})</small>`;
     this.show(`
       <h2>${title}</h2>
       ${this.scoreLine(match)}
       ${this.statsTable(match)}
       ${this.goalList(match)}
+      ${this.summary(match, healed)}
       <div class="menu-row">
         <button data-act="main">Hauptmenü</button>
         <button class="primary big" data-act="start">Revanche</button>
       </div>`, 'wide');
+  }
+
+  summary(m, healed) {
+    const items = [];
+    for (const l of m.rules.log) {
+      const t = m.teams[l.team];
+      items.push(`<li>✋ <b style="color:${t.data.colors.shirt}">${t.data.short}</b> 2 Min. ${l.player.lastName} – ${FOUL_NAMES[l.type]}</li>`);
+    }
+    for (const i of m.rules.injuries) {
+      items.push(`<li>🩹 <b>${i.team.short}</b> ${i.player.firstName} ${i.player.lastName}: ${INJURY_NAMES[i.level]}, ${i.games} ${i.games === 1 ? 'Spiel' : 'Spiele'} Pause</li>`);
+    }
+    for (const x of healed) items.push(`<li>✅ ${x.team.short} ${x.player.firstName} ${x.player.lastName} ist wieder fit</li>`);
+    if (m.shootout) {
+      const k = m.shootout.kicks;
+      items.push(`<li>Penaltys: ${m.teams[0].data.short} ${k[0].filter(Boolean).length} – ${k[1].filter(Boolean).length} ${m.teams[1].data.short}</li>`);
+    }
+    return items.length ? `<ul class="sum-list">${items.join('')}</ul>` : '';
   }
 
   scoreLine(m) {
@@ -186,10 +244,12 @@ export class Menus {
     if (!m.goals.length) return '<p class="hint">Noch keine Tore.</p>';
     return `<ul class="goals">${m.goals.map(g => {
       const t = m.teams[g.team];
-      const time = clockText(20 * 60 - g.clock);
+      const time = clockText((g.period > 3 ? 300 : 1200) - g.clock);
       const who = g.ownGoal ? 'Eigentor' : `${g.scorer.firstName} ${g.scorer.lastName} (${g.scorer.number})`;
       const as = g.assist ? ` · Assist ${g.assist.lastName}` : '';
-      return `<li><span class="gt">${g.period}. / ${time}</span> <b style="color:${t.data.colors.shirt}">${t.data.short}</b> ${who}${as}</li>`;
+      const per = g.period > 3 ? 'V' : g.period + '.';
+      const pp = g.pp === 'PP' ? ' <small class="hint">(PP)</small>' : g.pp === 'SH' ? ' <small class="hint">(Unterzahl)</small>' : '';
+      return `<li><span class="gt">${per} / ${time}</span> <b style="color:${t.data.colors.shirt}">${t.data.short}</b> ${who}${as}${pp}</li>`;
     }).join('')}</ul>`;
   }
 
@@ -197,7 +257,8 @@ export class Menus {
     const app = this.app;
     switch (act) {
       case 'main': app.toMenu(); break;
-      case 'friendly': this.friendly(); break;
+      case 'friendly': this.app.refreshTeams(); this.friendly(); break;
+      case 'celebrations': this.celebrations(); break;
       case 'pickTeam': this.pick = +val; this.friendly(); break;
       case 'start': app.startFriendly(this.pick ?? 0); break;
       case 'settings': this.settings(this.screen); break;

@@ -1,4 +1,5 @@
-// Ein Match: Teams, Linien, Ball, Spieluhr, Bully, Tore, Wechsel.
+// Ein Match: Teams, Linien, Ball, Spieluhr, Bully, Tore, Wechsel, Strafen,
+// Verletzungen, Wiederholung, Jubel, Verlängerung und Penaltyschiessen.
 // Läuft mit festem Zeitschritt und kennt weder DOM noch Three.js.
 
 import { CONFIG } from '../config.js';
@@ -11,17 +12,22 @@ import {
 import { updateTeamAI } from '../ai/teamAI.js';
 import { updateGoalieAI } from '../ai/goalieAI.js';
 import { HumanController } from './human.js';
-import { clamp, lerp, gauss, distToSegment } from './util.js';
+import { clamp, lerp, gauss, distToSegment, ROLES } from './util.js';
+import { Rules } from './rules.js';
+import { Recorder } from './replay.js';
+import { Shootout } from './shootout.js';
 
-export { gauss, distToSegment };
+export { gauss, distToSegment, ROLES };
 
-export const ROLES = ['C', 'LW', 'RW', 'LD', 'RD'];
 const T = CONFIG.time;
 const PL = CONFIG.player;
 const SH = CONFIG.shot;
 const PA = CONFIG.pass;
 const DU = CONFIG.duel;
 const GK = CONFIG.goalie;
+const POS_FOR_ROLE = { C: 'C', LW: 'F', RW: 'F', LD: 'D', RD: 'D' };
+
+const injured = p => !!p.injuredNow || !!(p.data.injury && p.data.injury.games > 0);
 
 export class MTeam {
   constructor(index, data, side, skill, goalieFactor) {
@@ -29,25 +35,29 @@ export class MTeam {
     this.data = data;
     this.side = side;               // eigenes Tor: −1 links, +1 rechts
     this.players = new Map(data.players.map(p => [p.id, new MPlayer(p, this)]));
+    this.lines = data.lines.map(l => ({ ...l }));   // Kopie: Verletzte werden ersetzt
     this.activeLine = 0;
     this.nextLine = 0;
     this.pending = new Set();
+    this.vacant = new Set();        // Positionen, die wegen Strafen leer bleiben
+    this.penalties = [];
     this.onField = {};
-    this.goalie = this.players.get(data.goalies[0]);
+    const gs = data.goalies.map(id => this.players.get(id));
+    this.goalie = gs.find(g => !injured(g)) || gs[0];
     this.score = 0;
-    this.stats = { shots: 0, onTarget: 0, passes: 0, passesOk: 0, possession: 0, saves: 0, steals: 0 };
+    this.stats = { shots: 0, onTarget: 0, passes: 0, passesOk: 0, possession: 0, saves: 0, steals: 0, penalties: 0 };
     this.skill = skill;
     this.goalieFactor = goalieFactor;
     this.human = false;
     this.ai = { lineCheck: Math.random() };
   }
   get attackDir() { return -this.side; }
-  get skaters() { return ROLES.map(r => this.onField[r]); }
-  get all() { return [...this.skaters, this.onField.G]; }
-  linePlayer(line, role) { return this.players.get(this.data.lines[line][role]); }
+  get skaters() { const s = []; for (const r of ROLES) if (this.onField[r]) s.push(this.onField[r]); return s; }
+  get all() { const s = this.skaters; if (this.onField.G) s.push(this.onField.G); return s; }
+  linePlayer(line, role) { return this.players.get(this.lines[line][role]); }
   avgStamina() {
     const s = this.skaters;
-    return s.reduce((a, p) => a + p.stamina, 0) / s.length;
+    return s.length ? s.reduce((a, p) => a + p.stamina, 0) / s.length : 1;
   }
 }
 
@@ -56,7 +66,7 @@ export class Match {
     const diff = CONFIG.difficulty[difficulty] || CONFIG.difficulty.mittel;
     this.difficulty = difficulty;
     this.tempo = diff.tempo;
-    this.settings = { autoChange: false, autoGoalie: false, ...settings };
+    this.settings = { autoChange: false, autoGoalie: false, replays: true, ...settings };
     const skill = i => (humanTeam === i ? CONFIG.ai.teammateSkill : diff.skill);
     const gf = i => (humanTeam === i ? 1 : humanTeam == null ? 1 : diff.goalie);
     this.teams = [new MTeam(0, teams[0], -1, skill(0), gf(0)), new MTeam(1, teams[1], 1, skill(1), gf(1))];
@@ -65,6 +75,7 @@ export class Match {
     this.period = 1;
     this.clock = T.periodGameSeconds;
     this.state = 'faceoff';
+    this.next = 'period';           // was nach der Pause kommt: period | ot | shootout
     this.timer = 0;
     this.events = [];
     this.goals = [];
@@ -72,11 +83,23 @@ export class Match {
     this.touches = [];
     this.lastPossTeam = null;
     this.faceoffSpot = { x: 0, y: 0 };
-    this.lastEventSound = 0;
+    this.result = null;
+    this.shootout = null;
+    this.replay = null;
+    this.celebT = 0;
+    this.rules = new Rules(this);
+    this.recorder = new Recorder();
 
     for (const t of this.teams) {
+      // verletzte Spieler (aus früheren Spielen) in den Linien ersetzen
+      for (let l = 0; l < t.lines.length; l++) {
+        for (const r of ROLES) {
+          const p = t.linePlayer(l, r);
+          if (injured(p)) { const rep = this.findReplacement(t, r, true); if (rep) t.lines[l][r] = rep.id; }
+        }
+      }
       for (const r of ROLES) this.putOnField(t, r, t.linePlayer(0, r));
-      t.goalie.onField = true; t.goalie.role = 'G'; t.onField.G = t.goalie;
+      this.putOnField(t, 'G', t.goalie);
     }
     this.human = null;
     if (humanTeam != null) {
@@ -88,12 +111,58 @@ export class Match {
 
   other(team) { return this.teams[team.index ^ 1]; }
   get allOnField() { return [...this.teams[0].all, ...this.teams[1].all]; }
+  get clockRate() { return this.period > T.periods ? T.otGameSeconds / T.otRealSeconds : T.periodGameSeconds / T.periodRealSeconds; }
+  get isOT() { return this.period > T.periods; }
   emit(e) { this.events.push(e); }
   takeEvents() { const e = this.events; this.events = []; return e; }
-  isHumanControlled(p) { return this.human && this.human.controlled === p && this.human.active(p); }
+  isHumanControlled(p) { return !!this.human && this.human.controlled === p && this.human.active(p); }
 
   putOnField(team, role, p) {
     p.onField = true; p.role = role; team.onField[role] = p;
+    p.fallen = 0;
+  }
+
+  removeFromField(p) {
+    const t = p.team;
+    if (p.role && t.onField[p.role] === p) t.onField[p.role] = null;
+    p.onField = false; p.role = null; p.charge = null;
+    if (this.ball.owner === p) this.ball.owner = null;
+    if (this.ball.pass && this.ball.pass.to === p) this.ball.pass = null;
+    if (this.human) this.human.onRemoved(p);
+  }
+
+  // Bester verfügbarer Ersatz für eine Position (Ersatzspieler bevorzugt)
+  findReplacement(t, role, setup = false) {
+    const inLines = new Set();
+    for (const l of t.lines) for (const r of ROLES) inLines.add(l[r]);
+    let best = null, bv = -Infinity;
+    for (const p of t.players.values()) {
+      if (p.isGoalie || p.onField || p.inBox || injured(p)) continue;
+      let v = 0;
+      if (t.data.subs.includes(p.id)) v += 3;
+      if (!inLines.has(p.id)) v += 2;
+      if (p.data.pos === POS_FOR_ROLE[role]) v += 2;
+      v += setup ? 0 : p.stamina;
+      if (v > bv) { bv = v; best = p; }
+    }
+    return best;
+  }
+
+  // Verletzten in allen Linien ersetzen; ist er auf dem Feld, kommt der Ersatz sofort
+  replaceInLines(t, p, role) {
+    const rep = this.findReplacement(t, role || 'C');
+    if (!rep) return;
+    for (const l of t.lines) for (const r of ROLES) if (l[r] === p.id) l[r] = rep.id;
+    if (role && !t.vacant.has(role)) this.fillRole(t, role, rep);
+  }
+
+  fillRole(t, role, p = null) {
+    p = p || this.findReplacement(t, role);
+    if (!p) return;
+    const gate = benchGate(t.side);
+    this.leaving = this.leaving.filter(l => l.p !== p);
+    p.setPos(gate.x + (Math.random() - 0.5) * 2, gate.y - 0.3, -Math.PI / 2);
+    this.putOnField(t, role, p);
   }
 
   // ---------------------------------------------------------------- Ablauf
@@ -115,37 +184,57 @@ export class Match {
         break;
       case 'play':
         this.playTick(dt);
+        this.recorder.tick(this, dt);
         break;
       case 'goal':
-      case 'out':
         this.timer -= dt;
+        this.idleTick(dt, 0.25);
+        this.recorder.tick(this, dt);
+        if (this.timer <= 0) this.startReplay();
+        break;
+      case 'replay':
+        this.replay.t += dt * T.replaySpeed;
+        if (this.replay.t >= this.replay.end) this.startCelebration();
+        break;
+      case 'celebrate':
+        this.timer -= dt;
+        this.celebT += dt;
         this.celebrateTick(dt);
+        if (this.timer <= 0) this.afterGoal();
+        break;
+      case 'out':
+      case 'penalty':
+        this.timer -= dt;
+        this.idleTick(dt, 0.3);
         if (this.timer <= 0) {
-          const spot = this.state === 'goal' ? { x: 0, y: 0 } : nearestFaceoffSpot(this.ball.x, this.ball.y);
+          const spot = this.state === 'out' ? nearestFaceoffSpot(this.ball.x, this.ball.y) : this.faceoffSpot;
           this.setupFaceoff(spot);
         }
         break;
+      case 'shootout':
+        this.shootout.tick(dt);
+        break;
       default:
-        break; // Drittelspause / Ende: nichts tun
+        break; // Drittelspause / Ende
     }
   }
 
-  playTick(dt) {
+  // KI, Physik, Ball – gemeinsam für normales Spiel und Penaltyschiessen
+  simTick(dt) {
     const ball = this.ball;
     if (this.human) this.human.preTick(dt);
     for (const t of this.teams) updateTeamAI(t, this, dt);
     for (const t of this.teams) {
       const g = t.onField.G;
-      if (!this.isHumanControlled(g) || this.human.goalieAssist) updateGoalieAI(g, this, dt);
+      if (g && (!this.isHumanControlled(g) || this.human.goalieAssist)) updateGoalieAI(g, this, dt);
     }
     if (this.human) this.human.postAI(dt);
 
     const ps = this.allOnField;
     for (const p of ps) p.update(dt, this);
-    this.separatePlayers(ps);
+    this.separatePlayers(ps, dt);
     for (const p of ps) p.constrain();
 
-    // Ball
     ball.prevX = ball.x; ball.prevY = ball.y;
     if (ball.owner) this.carryBall();
     else {
@@ -153,22 +242,27 @@ export class Match {
       const evs = [];
       stepBall(ball, dt, evs);
       for (const e of evs) this.onBallEvent(e);
-      if (this.state !== 'play') return;
+      if (this.state !== 'play' && this.state !== 'shootout') return;
+      if (this.shootout && this.shootout.phase !== 'run') return;
       this.checkPickups();
     }
     if (ball.owner) this.checkSteals();
+  }
 
-    // Ballbesitz-Statistik
+  playTick(dt) {
+    this.simTick(dt);
+    if (this.state !== 'play') return;
+    const ball = this.ball;
     if (ball.owner) {
       ball.owner.team.stats.possession += dt;
       this.lastPossTeam = ball.owner.team;
     }
+    this.rules.tick(dt);
+    if (this.state !== 'play') return;
 
-    // Spieluhr
-    this.clock -= dt * T.periodGameSeconds / T.periodRealSeconds;
+    this.clock -= dt * this.clockRate;
     if (this.clock <= 0) { this.clock = 0; this.endPeriod(); return; }
 
-    // Wechsel
     for (const t of this.teams) {
       this.processLineChanges(t, false);
       t.ai.lineCheck -= dt;
@@ -176,29 +270,104 @@ export class Match {
     }
   }
 
-  celebrateTick(dt) {
-    const ball = this.ball;
-    const scorer = this.lastGoal && this.state === 'goal' ? this.lastGoal.scorerPlayer : null;
+  stepBallOnly(dt) {
+    if (!this.ball.owner && !this.ball.out) stepBall(this.ball, dt, []);
+  }
+
+  // Unterbruch: alle laufen aus
+  idleTick(dt, drift) {
     for (const t of this.teams) {
       for (const p of t.all) {
         const c = p.ctrl;
         c.sprint = false; c.face = null;
-        let tx = p.x, ty = p.y;
-        if (scorer && t === scorer.team && !p.isGoalie) {
-          if (p === scorer) { tx = scorer.x + Math.cos(scorer.facing) * 2; ty = scorer.y + Math.sin(scorer.facing) * 2; }
-          else { tx = scorer.x; ty = scorer.y; }
-        } else if (!p.isGoalie) {
-          tx = p.x - t.attackDir * 0.6;
-        }
-        const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
-        const want = p === scorer ? 0.5 : d > 1.4 ? Math.min(1, d / 3) * 0.7 : 0;
-        c.mx = d > 0.01 ? dx / d * want : 0; c.my = d > 0.01 ? dy / d * want : 0;
+        c.mx = p.isGoalie ? 0 : -t.attackDir * drift * (Math.abs(p.x) > 3 ? 1 : 0);
+        c.my = 0;
         p.update(dt, this);
       }
     }
-    this.separatePlayers(this.allOnField);
+    this.separatePlayers(this.allOnField, dt);
     for (const p of this.allOnField) p.constrain();
-    if (!ball.owner && !ball.out) stepBall(ball, dt, []);
+    this.stepBallOnly(dt);
+  }
+
+  // ---------------------------------------------------------------- Tor, Wiederholung, Jubel
+
+  startReplay() {
+    const g = this.lastGoal;
+    if (!this.settings.replays || !this.recorder.frames.length) { this.startCelebration(); return; }
+    const frames = this.recorder.cut(g.time - T.replaySeconds, g.time + T.replayAfter);
+    if (frames.length < 5) { this.startCelebration(); return; }
+    this.replay = { frames, t: frames[0].t, start: frames[0].t, end: frames[frames.length - 1].t, side: g.side };
+    this.state = 'replay';
+    this.emit({ type: 'replay' });
+  }
+
+  skip() {
+    if (this.state === 'replay') this.startCelebration();
+    else if (this.state === 'celebrate') this.afterGoal();
+  }
+
+  startCelebration() {
+    this.replay = null;
+    this.state = 'celebrate';
+    this.timer = T.celebration;
+    this.celebT = 0;
+    const g = this.lastGoal;
+    const s = g && g.scorerPlayer && g.scorerPlayer.onField ? g.scorerPlayer : null;
+    this.celebrator = s;
+    if (s) {
+      s.playAnim('celebrate', s.data.celebration || 0);
+      // Laufrichtung: Richtung Kamera und Feldmitte
+      const tx = s.x * 0.5, ty = -6;
+      s.celDir = Math.atan2(ty - s.y, tx - s.x);
+      s.slide = false;
+    }
+    this.emit({ type: 'celebrate', player: s });
+  }
+
+  celebrateTick(dt) {
+    const s = this.celebrator, ct = this.celebT;
+    const cel = s ? (s.data.celebration || 0) : -1;
+    let k = 0;
+    for (const t of this.teams) {
+      for (const p of t.all) {
+        const c = p.ctrl;
+        c.sprint = false; c.face = null; c.mx = 0; c.my = 0;
+        if (p === s) {
+          let dir = s.celDir, mag = 0;
+          if (cel === 1) { if (ct < 0.75) mag = 1; else s.slide = true; }
+          else if (cel === 3) { dir = s.celDir + ct * 1.5; mag = 0.65; }
+          else if (ct < 0.9) mag = 0.45;
+          c.mx = Math.cos(dir) * mag; c.my = Math.sin(dir) * mag;
+          if (mag === 0 && cel !== 1) c.face = Math.PI / 2 * -1; // zur Kamera
+        } else if (s && t === s.team && !p.isGoalie) {
+          // Mitspieler kommen gratulieren (Team-Kreis: eng im Kreis)
+          const ang = (k++ / 4) * Math.PI * 2;
+          const rad = cel === 7 ? 1.05 : 1.9;
+          const tx = s.x + Math.cos(ang) * rad, ty = s.y + Math.sin(ang) * rad;
+          const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
+          const mag = d > 0.25 ? Math.min(1, d / 2) : 0;
+          c.mx = d > 0.01 ? dx / d * mag : 0; c.my = d > 0.01 ? dy / d * mag : 0;
+          c.sprint = d > 5;
+          c.face = Math.atan2(s.y - p.y, s.x - p.x);
+          if (d < 0.6 && ct > 0.6 && p.anim.action !== 'cheer' && (cel === 7 || Math.random() < 0.02)) p.playAnim('cheer');
+        } else if (!p.isGoalie) {
+          c.mx = -t.attackDir * 0.2;
+        }
+        p.update(dt, this);
+      }
+    }
+    if (s && cel === 7 && ct > 0.6 && s.anim.action !== 'cheer') { /* Schütze springt im Kreis mit */ }
+    this.separatePlayers(this.allOnField, dt);
+    for (const p of this.allOnField) p.constrain();
+    this.stepBallOnly(dt);
+  }
+
+  afterGoal() {
+    if (this.celebrator) this.celebrator.slide = false;
+    this.celebrator = null;
+    if (this.isOT) { this.endGame('ot'); return; }
+    this.setupFaceoff({ x: 0, y: 0 });
   }
 
   // ---------------------------------------------------------------- Bully
@@ -208,13 +377,12 @@ export class Match {
     this.timer = T.faceoffDelay;
     this.faceoffSpot = spot;
     this.ball.reset(spot.x, spot.y);
+    this.leaving = this.leaving.filter(l => l.box || l.wait > 0);
     for (const t of this.teams) {
-      // Wechsel bei Unterbruch sofort erledigen
       if (!t.pending.size && (!t.human || this.settings.autoChange) && t.avgStamina() < 0.7) this.requestLineChange(t, true);
       this.processLineChanges(t, true);
       this.placeForFaceoff(t, spot);
     }
-    this.leaving = [];
     if (this.human) this.human.onFaceoff();
     this.emit({ type: 'faceoff' });
   }
@@ -222,27 +390,32 @@ export class Match {
   placeForFaceoff(t, s) {
     const d = t.attackDir;
     const local = { C: [-0.85, 0], LW: [-2.6, 3.6], RW: [-2.6, -3.6], LD: [-6.5, 2.8], RD: [-6.5, -2.8] };
+    const taker = this.faceoffTaker(t);
     for (const r of ROLES) {
       const p = t.onField[r];
-      const pos = { x: s.x + local[r][0] * d, y: s.y + local[r][1] * d };
-      p.x = pos.x; p.y = pos.y;
+      if (!p) continue;
+      const pos = p === taker ? local.C : r === 'C' ? local[taker && taker.role ? taker.role : 'C'] : local[r];
+      p.x = s.x + pos[0] * d; p.y = s.y + pos[1] * d;
       for (let i = 0; i < 3; i++) {
         const c = boardContact(p.x, p.y, 0.7);
         if (c) { p.x += c.nx * c.depth; p.y += c.ny * c.depth; }
         pushOutOfCrease(p, p.r + 0.1);
       }
       p.setPos(p.x, p.y, d > 0 ? 0 : Math.PI);
-      p.stamina = Math.min(1, p.stamina);
+      p.fallen = 0; p.slide = false;
     }
     const g = t.onField.G;
-    g.setPos(t.side * (GOAL_X - GK.lineOffset), 0, t.side > 0 ? Math.PI : 0);
-    g.holdTimer = 0;
+    if (g) { g.setPos(t.side * (GOAL_X - GK.lineOffset), 0, t.side > 0 ? Math.PI : 0); g.holdTimer = 0; }
+  }
+
+  faceoffTaker(t) {
+    return t.onField.C || t.onField.LW || t.onField.RW || t.onField.LD || t.onField.RD || null;
   }
 
   dropBall() {
     const [a, b] = this.teams;
-    const ca = a.onField.C, cb = b.onField.C;
-    const pa = 0.5 + (ca.stat('technik') - cb.stat('technik')) * 0.35 + (a.skill - b.skill) * 0.15;
+    const ca = this.faceoffTaker(a), cb = this.faceoffTaker(b);
+    const pa = 0.5 + ((ca ? ca.stat('technik') : 0.5) - (cb ? cb.stat('technik') : 0.5)) * 0.35 + (a.skill - b.skill) * 0.15;
     const win = Math.random() < pa ? a : b;
     const d = win.attackDir;
     const s = this.faceoffSpot;
@@ -253,10 +426,9 @@ export class Match {
     const dx = tx - s.x, dy = ty - s.y, l = Math.hypot(dx, dy);
     const ball = this.ball;
     ball.vx = dx / l * 6.2; ball.vy = dy / l * 6.2;
-    ball.lastTouch = win.onField.C;
-    win.onField.C.pickupCooldown = 0.25;
-    win.onField.C.playAnim('pass');
-    (win === a ? cb : ca).playAnim('pass');
+    const wt = win === a ? ca : cb, lt = win === a ? cb : ca;
+    if (wt) { ball.lastTouch = wt; wt.pickupCooldown = 0.25; wt.playAnim('pass'); }
+    if (lt) lt.playAnim('pass');
     this.state = 'play';
     this.emit({ type: 'whistle', kind: 'faceoff' });
   }
@@ -278,7 +450,7 @@ export class Match {
 
   onBallEvent(e) {
     if (e.type === 'goal') this.onGoal(e.side);
-    else if (e.type === 'out') this.onOut();
+    else if (e.type === 'out') { if (this.shootout) this.emit({ type: 'whistle', kind: 'out' }); else this.onOut(); }
     else this.emit(e);
   }
 
@@ -312,7 +484,7 @@ export class Match {
     const sp = {};
     for (const t of this.teams) {
       for (const p of t.skaters) {
-        if (p.pickupCooldown > 0) continue;
+        if (p.pickupCooldown > 0 || p.fallen > 0) continue;
         p.stickPoint(sp);
         const d = distToSegment(sp.x, sp.y, ball.prevX, ball.prevY, ball.x, ball.y);
         if (d < PL.controlRadius) cands.push({ p, d });
@@ -346,7 +518,6 @@ export class Match {
     const ball = this.ball;
     const sp = ball.speed * keep;
     const a = Math.atan2(-ball.vy, -ball.vx) + (Math.random() - 0.5) * 2 * spread;
-    // Abpraller weg vom Spieler, nicht zurück durch ihn hindurch
     const away = Math.atan2(ball.y - p.y, ball.x - p.x);
     const ang = Math.cos(a - away) > -0.2 ? a : away + (Math.random() - 0.5);
     ball.vx = Math.cos(ang) * sp; ball.vy = Math.sin(ang) * sp;
@@ -362,19 +533,26 @@ export class Match {
     const opp = this.other(carrier.team);
     const sp = {};
     for (const d of opp.skaters) {
-      if (d.stealCooldown > 0 || this.isHumanControlled(d)) continue;
+      if (d.stealCooldown > 0 || d.fallen > 0 || this.isHumanControlled(d)) continue;
       d.stickPoint(sp);
       const dist = Math.min(Math.hypot(sp.x - ball.x, sp.y - ball.y), Math.hypot(d.x - ball.x, d.y - ball.y) * 1.1);
       if (dist > DU.stealRange) continue;
       d.stealCooldown = DU.stealCooldown * (1.4 - 0.5 * opp.skill) * (0.8 + Math.random() * 0.4);
       d.playAnim('poke');
-      // Frontal (Verteidiger steht im Laufweg) klappt der Stockeinsatz viel besser als von hinten
-      const cx = Math.cos(carrier.facing), cy = Math.sin(carrier.facing);
-      const front = ((d.x - carrier.x) * cx + (d.y - carrier.y) * cy) / (Math.hypot(d.x - carrier.x, d.y - carrier.y) || 1);
+      const front = this.frontness(d, carrier);
       const dir = front > 0.3 ? DU.frontFactor : front < -0.3 ? DU.behindFactor : 1;
       const chance = DU.aiStealChance * dir * (0.5 + 0.7 * opp.skill) * this.duelRatio(d, carrier);
-      if (Math.random() < chance) { this.doSteal(d, carrier); return; }
+      const ok = Math.random() < chance;
+      if (ok) this.doSteal(d, carrier);
+      this.rules.onTackle(d, carrier, ok, front);
+      if (ok || this.state !== 'play') return;
     }
+  }
+
+  // +1 = Verteidiger steht vor dem Ballführer, −1 = dahinter
+  frontness(d, carrier) {
+    const cx = Math.cos(carrier.facing), cy = Math.sin(carrier.facing);
+    return ((d.x - carrier.x) * cx + (d.y - carrier.y) * cy) / (Math.hypot(d.x - carrier.x, d.y - carrier.y) || 1);
   }
 
   duelRatio(d, carrier) {
@@ -383,15 +561,17 @@ export class Match {
 
   tryHumanSteal(p) {
     const ball = this.ball, carrier = ball.owner;
-    if (p.stealCooldown > 0) return false;
+    if (p.stealCooldown > 0 || p.fallen > 0) return false;
     p.playAnim('poke');
     p.stealCooldown = DU.stealCooldown;
     if (!carrier || carrier.team === p.team || carrier.isGoalie) return false;
     const sp = p.stickPoint();
     const dist = Math.min(Math.hypot(sp.x - ball.x, sp.y - ball.y), Math.hypot(p.x - ball.x, p.y - ball.y));
     if (dist > DU.stealRange + 0.25) return false;
-    if (Math.random() < DU.humanStealChance * this.duelRatio(p, carrier)) { this.doSteal(p, carrier); return true; }
-    return false;
+    const ok = Math.random() < DU.humanStealChance * this.duelRatio(p, carrier);
+    if (ok) this.doSteal(p, carrier);
+    this.rules.onTackle(p, carrier, ok, this.frontness(p, carrier));
+    return ok;
   }
 
   doSteal(d, carrier) {
@@ -421,7 +601,6 @@ export class Match {
     if (g.pickupCooldown > 0) return;
     const side = g.team.side;
     const speed = ball.speed;
-    // Langsamer Ball im Torraum: aufnehmen
     if (speed < 7 && ball.z < 0.8 && Math.hypot(g.x - ball.x, g.y - ball.y) < 0.6 && inCrease(ball.x, ball.y, side, 0.1)) {
       this.goalieCatch(g);
       return;
@@ -436,7 +615,7 @@ export class Match {
     const offPen = (d / reach) ** 2 * 0.25;
     let p = GK.baseSave + 0.22 * (g.stat('reflexe') - 0.5) + 0.15 * (g.stat('stellung') - 0.5) - speedPen - offPen;
     if (ball.shot && ball.shot.oneTimer) p -= 0.08;
-    if (g.reactTimer > 0) p -= 0.25; // noch nicht reagiert
+    if (g.reactTimer > 0) p -= 0.25;
     p = clamp(p * g.team.goalieFactor, 0.08, 0.96);
     const dir = Math.sign((ball.y - g.y) * side) || 1;
     g.playAnim('save', dir);
@@ -448,7 +627,6 @@ export class Match {
       if (speed < 24 && Math.random() < GK.catchChance * (0.6 + 0.5 * g.stat('reflexe'))) {
         this.goalieCatch(g);
       } else {
-        // Abpraller nach vorne
         const base = side > 0 ? Math.PI : 0;
         const a = base + (Math.random() - 0.5) * 2.2;
         const s = speed * (0.22 + Math.random() * 0.2);
@@ -497,6 +675,7 @@ export class Match {
     this.recordTouch(p);
     p.playAnim('shoot');
     this.emit({ type: 'shot', player: p, power: charge, speed });
+    if (charge > 0.5) this.rules.onShot(p);
   }
 
   // Pass (oder Goalie-Abwurf) an Mitspieler r, optional über die Bande
@@ -514,7 +693,6 @@ export class Match {
     }
     let ax = tx, ay = ty;
     if (bank) {
-      // Spiegelpunkt an der näheren Längsbande
       const sgn = (ball.y + ty) / 2 >= 0 ? 1 : -1;
       const B = sgn * (HALF_W - ball.r);
       ay = 2 * B - ty;
@@ -536,7 +714,6 @@ export class Match {
     this.emit({ type: 'pass', player: p, bank });
   }
 
-  // Bester Passempfänger in Richtung (dx,dy); ohne Richtung frei gewählt
   pickReceiver(p, dx, dy) {
     const mag = Math.hypot(dx, dy);
     if (mag < 0.3) { dx = Math.cos(p.facing); dy = Math.sin(p.facing); }
@@ -563,6 +740,7 @@ export class Match {
   // ---------------------------------------------------------------- Ereignisse
 
   onGoal(side) {
+    if (this.shootout) { this.shootout.onGoal(); this.emit({ type: 'goalHorn' }); return; }
     const ball = this.ball;
     const defending = this.teams.find(t => t.side === side);
     const scoring = this.other(defending);
@@ -580,19 +758,20 @@ export class Match {
       if (assist) assist.assists++;
     }
     if (ball.shot && ball.shot.team === scoring) scoring.stats.onTarget++;
+    const pp = defending.vacant.size > scoring.vacant.size ? 'PP' : defending.vacant.size < scoring.vacant.size ? 'SH' : null;
     scoring.score++;
+    const cancelled = this.rules.onGoal(scoring);
     const goal = {
-      team: scoring.index, period: this.period, clock: this.clock,
-      scorer: ownGoal ? null : scorer.data, assist: assist ? assist.data : null, ownGoal,
+      team: scoring.index, period: this.period, clock: this.clock, time: this.time, side,
+      scorer: ownGoal ? null : scorer.data, assist: assist ? assist.data : null, ownGoal, pp,
       scorerPlayer: ownGoal ? null : scorer,
     };
     this.goals.push(goal);
     this.lastGoal = goal;
     this.state = 'goal';
-    this.timer = T.goalPause;
+    this.timer = T.goalLive;
     for (const p of scoring.all) p.charge = null;
-    if (!ownGoal) scorer.playAnim('cheer');
-    this.emit({ type: 'goal', goal, team: scoring });
+    this.emit({ type: 'goal', goal, team: scoring, cancelledPenalty: cancelled });
   }
 
   onOut() {
@@ -606,20 +785,22 @@ export class Match {
 
   endPeriod() {
     for (const p of this.allOnField) p.charge = null;
-    if (this.period >= T.periods) {
-      this.state = 'end';
-      this.emit({ type: 'gameEnd' });
-    } else {
-      this.state = 'intermission';
-      this.emit({ type: 'periodEnd', period: this.period });
-    }
+    this.rules.flush();
     this.emit({ type: 'whistle', kind: 'end' });
+    const [a, b] = this.teams;
+    if (this.period >= T.periods) {
+      if (a.score !== b.score) { this.endGame(this.isOT ? 'ot' : 'regular'); return; }
+      this.next = this.isOT ? 'shootout' : 'ot';
+    } else this.next = 'period';
+    this.state = 'intermission';
+    this.emit({ type: 'periodEnd', period: this.period, next: this.next });
   }
 
   nextPeriod() {
     if (this.state !== 'intermission') return;
+    if (this.next === 'shootout') { this.startShootout(); return; }
     this.period++;
-    this.clock = T.periodGameSeconds;
+    this.clock = this.isOT ? T.otGameSeconds : T.periodGameSeconds;
     for (const t of this.teams) {
       t.side *= -1;
       for (const p of t.players.values()) p.stamina = Math.min(1, p.stamina + 0.5);
@@ -627,34 +808,61 @@ export class Match {
     this.setupFaceoff({ x: 0, y: 0 });
   }
 
+  startShootout() {
+    this.state = 'shootout';
+    this.leaving = [];
+    this.shootout = new Shootout(this);
+    this.emit({ type: 'shootoutStart' });
+  }
+
+  finishShootout(w) {
+    this.teams[w].score++;
+    this.endGame('so');
+  }
+
+  endGame(type) {
+    const [a, b] = this.teams;
+    const w = a.score > b.score ? 0 : 1;
+    const P = CONFIG.points;
+    const pts = type === 'regular' ? [P.win, P.loss] : [P.winOT, P.lossOT];
+    this.result = { winner: w, type, points: w === 0 ? pts : [pts[1], pts[0]] };
+    this.state = 'end';
+    this.emit({ type: 'gameEnd', result: this.result });
+  }
+
   // ---------------------------------------------------------------- Wechsel
 
   requestLineChange(t, quiet = false) {
-    if (t.pending.size) return;
+    if (t.pending.size || this.shootout) return;
     t.nextLine = (t.activeLine + 1) % 3;
-    for (const r of ROLES) t.pending.add(r);
+    for (const r of ROLES) if (!t.vacant.has(r)) t.pending.add(r);
     if (!quiet) this.emit({ type: 'lineChange', team: t, line: t.nextLine });
   }
 
   processLineChanges(t, immediate) {
     if (!t.pending.size) return;
     for (const r of [...t.pending]) {
+      if (t.vacant.has(r)) { t.pending.delete(r); continue; }
       const cur = t.onField[r];
-      if (!immediate && this.ball.owner === cur) continue;
-      const np = t.linePlayer(t.nextLine, r);
+      if (cur && !immediate && (this.ball.owner === cur || cur.fallen > 0)) continue;
+      let np = t.linePlayer(t.nextLine, r);
+      if (np.onField || np.inBox || injured(np)) np = np === cur ? cur : this.findReplacement(t, r);
+      t.pending.delete(r);
+      if (!np || np === cur) continue;
       this.leaving = this.leaving.filter(l => l.p !== np);
-      if (immediate) {
-        np.setPos(cur.x, cur.y, cur.facing);
-      } else {
+      if (cur) {
+        if (immediate) np.setPos(cur.x, cur.y, cur.facing);
+        else this.leaving.push({ p: cur, t: 0 });
+        const wasHuman = this.human && this.human.controlled === cur;
+        cur.onField = false; cur.role = null; cur.charge = null;
+        if (this.ball.pass && this.ball.pass.to === cur) this.ball.pass.to = np;
+        if (wasHuman) this.human.onSubstituted(cur, np);
+      }
+      if (!immediate || !cur) {
         const gate = benchGate(t.side);
         np.setPos(gate.x + (Math.random() - 0.5) * 2.5, gate.y - Math.random() * 0.4, -Math.PI / 2);
-        this.leaving.push({ p: cur, t: 0 });
       }
-      cur.onField = false; cur.role = null; cur.charge = null;
       this.putOnField(t, r, np);
-      if (this.ball.pass && this.ball.pass.to === cur) this.ball.pass.to = np;
-      if (this.human) this.human.onSubstituted(cur, np);
-      t.pending.delete(r);
     }
     if (!t.pending.size) t.activeLine = t.nextLine;
   }
@@ -668,26 +876,31 @@ export class Match {
     if (t.avgStamina() < CONFIG.stamina.autoChangeBelow && !danger) this.requestLineChange(t);
   }
 
+  // Spieler, die vom Feld gehen (zur Bank oder zur Strafbank)
   updateLeaving(dt) {
     for (const l of this.leaving) {
-      const g = benchGate(l.p.team.side);
-      const dx = g.x - l.p.x, dy = (g.y + 0.6) - l.p.y, d = Math.hypot(dx, dy);
-      const v = 3.5;
+      const p = l.p;
       l.t += dt;
+      if (l.wait > 0) { l.wait -= dt; p.anim.t += dt; continue; }
+      const g = l.target || benchGate(p.team.side);
+      const dx = g.x - p.x, dy = (g.y + 0.6) - p.y, d = Math.hypot(dx, dy);
+      const v = p.injuredNow ? 1.6 : 3.5;
       if (d > 0.05) {
-        l.p.vx = dx / d * v; l.p.vy = dy / d * v;
-        l.p.x += l.p.vx * dt; l.p.y += l.p.vy * dt;
-        l.p.facing = Math.atan2(dy, dx);
+        p.vx = dx / d * v; p.vy = dy / d * v;
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        p.facing = Math.atan2(dy, dx);
       }
-      l.p.anim.action = 'run'; l.p.anim.t += dt;
-      l.done = d < 0.4 || l.t > 6;
+      if (p.anim.action !== 'run') { p.anim.action = 'run'; p.anim.t = 0; }
+      p.anim.t += dt;
+      l.done = d < 0.4 || l.t > 9;
     }
     this.leaving = this.leaving.filter(l => !l.done);
   }
 
   // ---------------------------------------------------------------- Physik
 
-  separatePlayers(ps) {
+  separatePlayers(ps, dt = 0) {
+    const own = this.ball.owner;
     for (let i = 0; i < ps.length; i++) {
       const a = ps[i];
       for (let j = i + 1; j < ps.length; j++) {
@@ -700,18 +913,25 @@ export class Match {
         const push = (min - d);
         const nx = dx / d, ny = dy / d;
         // Goalie steht fest, Ballführer kann Verteidiger nicht wegschieben
-        const own = this.ball.owner;
         const wa = a.isGoalie ? 0.15 : b.isGoalie ? 0.85 : a === own ? 0.8 : b === own ? 0.2 : 0.5;
         a.x -= nx * push * wa; a.y -= ny * push * wa;
         b.x += nx * push * (1 - wa); b.y += ny * push * (1 - wa);
+        if (dt > 0 && a.team !== b.team) {
+          const rel = Math.abs((a.vx - b.vx) * nx + (a.vy - b.vy) * ny);
+          this.rules.onContact(a, b, rel, dt);
+        }
       }
     }
   }
 
-  // Spielstand als Text für die Anzeige
   clockText() {
     const s = Math.ceil(this.clock);
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }
+
+  periodLabel() {
+    if (this.shootout) return 'Penaltys';
+    return this.isOT ? 'Verlängerung' : `${this.period}. Drittel`;
   }
 }
 

@@ -15,3 +15,6 @@ export function distToSegment(px, py, ax, ay, bx, by) {
   t = clamp(t, 0, 1);
   return Math.hypot(px - (ax + ex * t), py - (ay + ey * t));
 }
+
+// Positionen der Feldspieler: Center, Flügel links/rechts, Verteidiger links/rechts
+export const ROLES = ['C', 'LW', 'RW', 'LD', 'RD'];

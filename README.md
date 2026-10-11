@@ -30,7 +30,11 @@ auf dem Handy über die IP-Adresse des PCs, z. B. `http://192.168.1.20:8766`.
 | Q | Linienwechsel |
 | P | Pause |
 
+Wiederholung und Jubel nach einem Tor lassen sich mit einer Taste oder durch Tippen überspringen.
+
 ## Veröffentlichen auf GitHub Pages
+
+Live: https://pascalbenz78-design.github.io/unihockey-stars/
 
 Kurzfassung (ausführliche Anleitung folgt in Etappe 6):
 

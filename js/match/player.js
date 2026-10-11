@@ -29,6 +29,10 @@ export class MPlayer {
     this.diving = 0;            // Goalie-Hechtsprung
     this.reactTimer = 0;        // Goalie-Reaktion
     this.anim = { action: 'idle', t: 0, dir: 0 };
+    this.fallen = 0;            // gestürzt: kann sich kurz nicht bewegen
+    this.slide = false;         // Knierutscher beim Jubel
+    this.inBox = false;         // sitzt auf der Strafbank
+    this.injuredNow = null;     // in diesem Spiel verletzt
     this.sprinting = false;
     this.wander = Math.random() * 100;
     // Statistik
@@ -73,6 +77,7 @@ export class MPlayer {
 
     const c = this.ctrl;
     let mx = c.mx, my = c.my;
+    if (this.fallen > 0) { this.fallen -= dt; mx = 0; my = 0; }
     const mag = Math.hypot(mx, my);
     if (mag > 1) { mx /= mag; my /= mag; }
     this.sprinting = !!c.sprint && mag > 0.3 && this.stamina > 0.04 && !this.isGoalie;
@@ -80,7 +85,7 @@ export class MPlayer {
     const tx = mx * vmax, ty = my * vmax;
     let dvx = tx - this.vx, dvy = ty - this.vy;
     const dv = Math.hypot(dvx, dvy);
-    const acc = (this.isGoalie ? 26 : PL.accel) * match.tempo * dt;
+    const acc = (this.slide ? 2.2 : this.isGoalie ? 26 : PL.accel) * match.tempo * dt;
     if (dv > acc) { dvx *= acc / dv; dvy *= acc / dv; }
     this.vx += dvx; this.vy += dvy;
     this.x += this.vx * dt; this.y += this.vy * dt;
@@ -107,7 +112,8 @@ export class MPlayer {
     // Animation: Laufen/Stehen, solange keine Aktion läuft
     const a = this.anim;
     const busy = (a.action === 'shoot' && a.t < 0.45) || (a.action === 'pass' && a.t < 0.35) ||
-      (a.action === 'save' && a.t < 0.6) || a.action === 'cheer' || (a.action === 'fall' && a.t < 1.2) ||
+      (a.action === 'save' && a.t < 0.6) || a.action === 'cheer' || a.action === 'celebrate' || a.action === 'signal' ||
+      (a.action === 'fall' && (a.t < 1.2 || this.fallen > 0)) ||
       (a.action === 'throw' && a.t < 0.5);
     if (!busy) {
       const next = this.charge != null ? 'charge' : sp > 0.5 ? 'run' : 'idle';
