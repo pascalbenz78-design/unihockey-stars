@@ -2,7 +2,7 @@
 // Geschwindigkeiten in m/s. Spielerwerte (Tempo, Schuss …) gehen von 1 bis 99.
 
 export const CONFIG = {
-  version: '0.5.0',
+  version: '1.0.0',
 
   field: {
     length: 40,
@@ -193,12 +193,23 @@ export const CONFIG = {
     maxX: 13,
   },
 
+  // Online-Speichern (Supabase-Projekt «netzroller», eigene Tabelle uh_savegames).
+  // Der Publishable Key darf öffentlich sein: Die Schutzregeln liegen in der Datenbank (docs/supabase.sql).
+  // Leer lassen = nur lokales Speichern und Datei-Export.
+  online: {
+    url: 'https://cyyvirqzaqqbmjpvgryw.supabase.co',
+    key: 'sb_publishable_JZ4sX5C-LR5D8FUTkc5Knw_98R7wtof',
+  },
+
   defaults: {
     difficulty: 'mittel',
     graphics: 'mittel',
     autoChange: false,
     autoGoalie: false,
     sound: true,
+    volume: 0.7,
+    touchSize: 'normal',
+    lefty: false,
   },
 };
 

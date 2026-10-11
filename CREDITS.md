@@ -5,6 +5,15 @@
 - **three.js** 0.170.0 – MIT-Lizenz, © three.js authors.
   Geladen von jsDelivr: https://cdn.jsdelivr.net/npm/three@0.170.0/
 
+## Ton
+
+- Alle Klänge (Schuss, Pfiff, Torsirene, Publikum …) werden live mit der Web
+  Audio API erzeugt (`js/ui/sound.js`). Keine fremden Sounddateien.
+
+## Online-Speichern
+
+- Supabase (https://supabase.com) als Datenbank, angesprochen über die REST-API.
+
 ## 3D-Modelle und Grafik
 
 - Spielerfiguren, Schläger, Goalie-Ausrüstung, Halle, Banden, Tore und

@@ -11,6 +11,8 @@ import { Menus } from './ui/menus.js';
 import { ClubEditor } from './ui/clubEditor.js';
 import { createDefaultClub, clubTeamData, chooseKits, clubAfterMatch, clubAfterGame } from './club/club.js';
 import { CareerUI } from './ui/careerUI.js';
+import { SaveManager } from './ui/saveUI.js';
+import { Sound } from './ui/sound.js';
 import { loadCareer, saveCareer } from './save/careerStore.js';
 import { createCareer, ownFixture, getTeam, playEvent, startNextSeason, OWN, currentEvent, standings, ownLeague } from './league/career.js';
 import { initFinance, hallOf, attendance, CAPACITY } from './league/finance.js';
@@ -36,6 +38,13 @@ class App {
     this.hud = new Hud();
     this.menus = new Menus(this);
     this.clubEditor = new ClubEditor(this);
+    this.sync = new SaveManager(this);
+    this.sound = new Sound();
+    this.sound.setEnabled(this.settings.sound, this.settings.volume);
+    const unlock = () => this.sound.unlock();
+    addEventListener('pointerdown', unlock);
+    addEventListener('keydown', unlock);
+    this.applyControlPrefs();
     this.careerUI = new CareerUI(this);
     this.career = loadCareer();
     if (this.career && !this.career.finance) { initFinance(this.career, this.club); saveCareer(this.career); }
@@ -53,6 +62,15 @@ class App {
     addEventListener('resize', () => this.renderer.resize());
     document.addEventListener('visibilitychange', () => { if (document.hidden && this.mode === 'match') this.pause(); });
     requestAnimationFrame(t => this.frame(t));
+    this.sync.startupCheck();
+  }
+
+  // Touch-Steuerung: Grösse und Linkshänder-Anordnung
+  applyControlPrefs() {
+    const b = document.body.classList;
+    b.remove('ts-klein', 'ts-gross');
+    if (this.settings.touchSize !== 'normal') b.add(`ts-${this.settings.touchSize}`);
+    b.toggle('lefty', !!this.settings.lefty);
   }
 
   // Teams mit gespeicherten Jubeln und Verletzungen
@@ -63,6 +81,7 @@ class App {
 
   saveClub() {
     if (!saveClub(this.club)) this.hud.toast('Speichern nicht möglich (privater Modus?)', 3);
+    if (this.sync) this.sync.markDirty();
   }
 
   createRenderer() {
@@ -166,6 +185,8 @@ class App {
     saveSettings(this.settings);
     if (k === 'graphics') this.createRenderer();
     if (this.match && (k === 'autoChange' || k === 'autoGoalie')) this.match.settings[k] = v;
+    if (k === 'sound' || k === 'volume') this.sound.setEnabled(this.settings.sound, +this.settings.volume);
+    if (k === 'touchSize' || k === 'lefty') this.applyControlPrefs();
   }
 
   frame(now) {
@@ -208,6 +229,7 @@ class App {
       this.match.takeEvents();
     }
     this.renderer.render(this.paused ? 0 : dt);
+    this.sound.crowd(this.renderer.excitement, this.mode === 'match' && !this.paused);
   }
 
   // ------------------------------------------------------------ Karriere
@@ -311,7 +333,18 @@ class App {
 
   handleEvents() {
     const m = this.match;
+    const snd = this.sound;
     for (const e of m.takeEvents()) {
+      switch (e.type) {
+        case 'shot': snd.shot(e.power); break;
+        case 'pass': snd.pass(); break;
+        case 'board': snd.board(e.speed); break;
+        case 'post': snd.post(); break;
+        case 'save': case 'catch': snd.save(); break;
+        case 'whistle': snd.whistle(e.kind === 'end'); break;
+        case 'goalHorn': snd.horn(); break;
+        default: break;
+      }
       switch (e.type) {
         case 'goal': {
           const g = e.goal;
@@ -321,6 +354,7 @@ class App {
           const pp = g.pp === 'PP' ? '<small>Powerplay-Tor</small>' : g.pp === 'SH' ? '<small>Tor in Unterzahl!</small>' : '';
           const canc = e.cancelledPenalty ? '<small>Vorteil genutzt – Strafe entfällt</small>' : '';
           this.hud.message(`<b>TOR!</b><span>${e.team.data.short} · ${who}</span>${as}${pp}${canc}`, 3, own ? 'goal own' : 'goal');
+          snd.horn();
           break;
         }
         case 'celebrate':

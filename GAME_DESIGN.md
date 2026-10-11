@@ -404,3 +404,35 @@ Konkrete Festlegungen während des Baus (Werte stehen in `js/config.js`).
 - Nachwuchs: Junioren (16–17 Jahre) zum Hochziehen; nicht hochgezogene gehen
   am Saisonende.
 - Schlechte Finanzen: Konto im Minus → kein Kauf und kein Ausbau.
+
+### Etappe 6: Speichern mit Code, Ton, Feinschliff
+- Netzroller hat kein Online-Speichern per Kurzcode (dort ist der «Code» ein
+  langer Text-Export, Supabase dient der Weltrangliste). Übernommen wurde das
+  Muster: REST-Aufrufe ohne Bibliothek, nur Publishable Key im Code,
+  RPC-Funktionen mit security definer, RLS ohne Policy, nur die Prüfsumme des
+  Geheimnisses in der Datenbank, «Kopieren» per Zwischenablage.
+- Supabase: gleiches Projekt wie Netzroller, eigene Tabelle `uh_savegames`
+  (`code` = SHA-256 des Codes, `data` jsonb, `updated_at`) und genau zwei
+  öffentliche Funktionen: `uh_load_game(code, nur_meta)` und
+  `uh_save_game(code, daten, bekannter_stand, erzwingen)`. Spielstand bis 3 MB
+  (tatsächlich ~80 KB gepackt). Höchstens eine Speicherung pro 2 Sekunden und
+  Code.
+- Code `UH-XXXX-XXXX` aus 32 Zeichen (2–9, A–Z ohne I und O), zufällig mit
+  `crypto.getRandomValues`. Eingabe tolerant (Kleinbuchstaben, Leerzeichen,
+  ohne Striche).
+- Gespeichert wird ein Paket aus Verein, Karriere und Freundschaftsteams.
+  Automatisch lokal nach jeder Änderung; mit Code zusätzlich online, 4 s nach
+  einer Änderung, aber nie während eines laufenden Spiels. Ohne Internet wird
+  später nochmals versucht.
+- Zwei Geräte: Jedes Gerät merkt sich den Serverstand des letzten Abgleichs.
+  Ist der Server neuer (beim Start geprüft und beim Speichern von der
+  Datenbank gemeldet), erscheint eine Warnung mit beiden Zeitpunkten; der
+  neuere Stand ist hervorgehoben. «Stand vom anderen Gerät laden» oder «Diesen
+  Stand behalten» (überschreibt).
+- Fallback: Export/Import als JSON-Datei.
+- Ton: Web Audio, synthetisch. Publikum als gefiltertes Rauschen, Lautstärke
+  folgt der Aufregung (Ball nahe am Tor, Schuss, Tor) plus Jubel bei Toren,
+  Pfosten und Paraden. Im Hauptmenü-Demo nur leises Publikum. Ton startet nach
+  der ersten Berührung/Taste.
+- Einstellungen: Ton an/aus, Lautstärke (leise/mittel/laut), Touch-Tasten
+  klein/normal/gross, Linkshänder-Anordnung (Joystick rechts).

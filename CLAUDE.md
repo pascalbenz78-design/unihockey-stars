@@ -18,8 +18,8 @@
 | 2 | Regeln, Verletzungen, Torjubel | abgenommen |
 | 3 | Eigener Verein | abgenommen |
 | 4 | Ligen und Saison | abgenommen |
-| 5 | Geld, Halle, Transfers | fertig, wartet auf Abnahme |
-| 6 | Speichern mit Code, Ton, Feinschliff | offen |
+| 5 | Geld, Halle, Transfers | abgenommen |
+| 6 | Speichern mit Code, Ton, Feinschliff | fertig, wartet auf Abnahme |
 
 ## Testen
 
@@ -35,3 +35,11 @@
   (der eingebaute Browser liefert verdeckt keine Animationsbilder),
   `__uh.sim(sek)` rechnet nur die Logik, `__uh.match` ist das laufende Spiel,
   `__uh.app.renderer.debugCam = { pos: [x,y,z], look: [x,y,z] }` für Nahaufnahmen.
+
+## Supabase
+
+- Projekt «netzroller» (cyyvirqzaqqbmjpvgryw), eigene Tabelle `uh_savegames`,
+  Funktionen `uh_save_game` / `uh_load_game` (SQL: `docs/supabase.sql`).
+  Netzroller-Tabellen nicht anfassen. Testeinträge nach dem Testen löschen:
+  `delete from uh_savegames where code = uh_code_hash('UH-…')`.
+- Zwei Geräte testen: Tabs über `localhost` und `127.0.0.1` (getrennter Speicher).

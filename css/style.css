@@ -386,3 +386,25 @@ table.market button { padding: 5px 10px; }
 .formation { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .slot { min-width: 0; }
 .panel { overflow-x: hidden; }
+
+/* ---------------------------------------------------------------- Etappe 6: Spielstand, Steuerung */
+.code-box { padding: 14px; border-radius: 12px; background: #1c2532; border: 1px solid var(--line); text-align: center; margin: 8px 0 14px; }
+.code-box .code { display: block; font-size: 34px; letter-spacing: 3px; font-family: ui-monospace, Consolas, monospace; color: var(--accent); margin: 6px 0; user-select: all; -webkit-user-select: all; }
+.menu-row.center { justify-content: center; }
+.note { padding: 8px 12px; border-radius: 8px; background: rgba(255, 207, 46, 0.12); border: 1px solid #8a7420; }
+#load-code { text-transform: uppercase; font-family: ui-monospace, Consolas, monospace; letter-spacing: 2px; max-width: 220px; }
+/* Touch-Tasten Grösse */
+body.ts-klein #btns-right { transform: scale(0.82); transform-origin: bottom right; }
+body.ts-gross #btns-right { transform: scale(1.18); transform-origin: bottom right; }
+body.ts-klein #joybase { transform: scale(0.85); }
+body.ts-gross #joybase { transform: scale(1.2); }
+/* Linkshänder: Joystick rechts, Tasten links */
+body.lefty #joyzone { left: auto; right: 0; }
+body.lefty #btns-right { right: auto; left: max(14px, env(safe-area-inset-left)); transform-origin: bottom left; }
+body.lefty .b-shoot { right: auto; left: 0; }
+body.lefty .b-pass { right: auto; left: 104px; }
+body.lefty .b-bank { right: auto; left: 98px; }
+body.lefty .b-sprint { right: auto; left: 14px; }
+body.lefty.touch #lineinfo { left: auto; right: max(10px, env(safe-area-inset-right)); top: 54px; }
+body.lefty #btns-top { right: auto; left: max(10px, env(safe-area-inset-left)); }
+body.lefty #joybase { left: calc(100% - 110px); }

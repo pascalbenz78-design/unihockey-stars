@@ -41,10 +41,11 @@ export class Menus {
       <div class="menu-col">
         <button class="primary big" data-act="friendly">Freundschaftsspiel</button>
         <button class="big" data-act="career">Karriere${this.app.career ? ' <small>(weiter)</small>' : ''}</button>
+        <button data-act="saveScreen">Spielstand${this.app.sync && this.app.sync.code ? ` <small>(${this.app.sync.code})</small>` : ''}</button>
         <button data-act="settings">Einstellungen</button>
         <button data-act="help">Anleitung</button>
       </div>
-      <p class="ver">Version ${CONFIG.version} · Etappe 5</p>`, 'main');
+      <p class="ver">Version ${CONFIG.version} · Etappe 6</p>`, 'main');
   }
 
   friendly() {
@@ -93,7 +94,12 @@ export class Menus {
       <div class="field-row"><label>Grafik</label><div class="opts">${this.opts('graphics', CONFIG.graphics, s.graphics)}</div></div>
       <div class="field-row"><label>Wechsel</label><div class="opts">${this.toggle('autoChange', s.autoChange, 'Auto-Wechsel')}</div></div>
       <div class="field-row"><label>Goalie</label><div class="opts">${this.toggle('autoGoalie', s.autoGoalie, 'Bei Schuss aufs eigene Tor automatisch übernehmen')}</div></div>
-      <p class="hint">Die Schwierigkeit gilt ab dem nächsten Spiel. Ton folgt in Etappe 6.</p>
+      <div class="field-row"><label>Ton</label><div class="opts">${this.toggle('sound', s.sound, 'Ton')}
+        ${this.opts('volume', { '0.35': { label: 'Leise' }, '0.7': { label: 'Mittel' }, '1.0': { label: 'Laut' } }, String(s.volume))}</div></div>
+      <div class="field-row"><label>Touch-Tasten</label><div class="opts">
+        ${this.opts('touchSize', { klein: { label: 'Klein' }, normal: { label: 'Normal' }, gross: { label: 'Gross' } }, s.touchSize)}
+        ${this.toggle('lefty', s.lefty, 'Linkshänder (Joystick rechts)')}</div></div>
+      <p class="hint">Die Schwierigkeit gilt ab dem nächsten Spiel.</p>
       <div class="menu-row"><button class="primary" data-act="back">Fertig</button></div>`);
   }
 
@@ -127,6 +133,8 @@ export class Menus {
             <li>Mit Richtung nach oben/unten beim Schuss zielst du in die obere bzw. untere Torecke.</li>
             <li>Müde Spieler sind langsamer und schiessen ungenauer – rechtzeitig wechseln!</li>
             <li><b>Auslage:</b> Schüsse auf die Seite, auf der die Kelle ist (Rückhand), sind ungenauer.</li>
+            <li><b>Karriere:</b> 5 Ligen, Cup, Playoffs, Auf-/Abstieg. Geld für Halle, Sponsoren, Transfers und Nachwuchs.</li>
+            <li><b>Spielstand:</b> wird automatisch gespeichert. Unter «Spielstand» bekommst du einen Code (UH-XXXX-XXXX), um auf einem anderen Gerät weiterzuspielen.</li>
             <li><b>Mein Verein:</b> Name, Trikots, Logo, Spieler (Aussehen, Schläger, Jubel), Aufstellung und Training. Der ★ Lieblingsspieler bekommt einen goldenen Schläger.</li>
           </ul>
           <h3>Regeln</h3>
@@ -270,7 +278,7 @@ export class Menus {
       case 'resume': app.resume(); break;
       case 'quit': app.toMenu(); break;
       case 'nextPeriod': app.nextPeriod(); break;
-      default: if (!app.careerUI.onAction(act, val)) app.clubEditor.onAction(act, val); break;
+      default: if (!app.careerUI.onAction(act, val) && !app.sync.onAction(act, val)) app.clubEditor.onAction(act, val); break;
     }
   }
 }
