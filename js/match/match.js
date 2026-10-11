@@ -62,7 +62,8 @@ export class MTeam {
 }
 
 export class Match {
-  constructor({ teams, humanTeam = 0, difficulty = 'mittel', settings = {} }) {
+  constructor({ teams, humanTeam = 0, difficulty = 'mittel', settings = {}, home = 0 }) {
+    this.home = home;               // Heimteam (Logo im Mittelkreis)
     const diff = CONFIG.difficulty[difficulty] || CONFIG.difficulty.mittel;
     this.difficulty = difficulty;
     this.tempo = diff.tempo;

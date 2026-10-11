@@ -8,6 +8,7 @@ import { CELEBRATIONS } from '../club/celebrations.js';
 import { FOCI, INTENSITY, STAT_NAMES, SKATER_STATS, GOALIE_STATS, overall } from '../club/training.js';
 import { INJURY_NAMES } from '../match/rules.js';
 import { playerById } from '../club/club.js';
+import { shortName } from '../club/names.js';
 
 const POS = { C: 'Center', F: 'Flügel', D: 'Verteidiger', G: 'Goalie' };
 const KIT_FIELDS = { shirt: 'Trikot', shirt2: 'Akzent', shorts: 'Hose', socks: 'Stulpen', number: 'Nummer', goalie: 'Goalie' };
@@ -27,8 +28,9 @@ export class ClubEditor {
   get el() { return this.app.menus.el; }
   save() { this.app.saveClub(); }
 
-  open(tab) {
+  open(tab, back = 'main') {
     if (tab) this.tab = tab;
+    this.backAct = back;
     this.playerId = null;
     this.render();
   }
@@ -44,7 +46,7 @@ export class ClubEditor {
         `<button class="tab ${this.tab === k ? 'sel' : ''}" data-act="ctab" data-val="${k}">${v}</button>`).join('')}</div>`;
     const body = this[`tab_${this.tab}`]();
     this.app.menus.show(`${head}<div class="tab-body">${body}</div>
-      <div class="menu-row"><button class="primary" data-act="main">Fertig</button></div>`, 'wide club');
+      <div class="menu-row"><button class="primary" data-act="${this.backAct || 'main'}">Fertig</button></div>`, 'wide club');
     this.app.menus.screen = 'club';
     this.bind();
   }
@@ -178,7 +180,7 @@ export class ClubEditor {
     const inj = p.injury && p.injury.games > 0;
     return `<div class="slot pcard ${inj ? 'inj' : ''}" data-slot="${key}">
       <small>${label}${mismatch ? ' ⚠' : ''}</small>
-      <b>${this.club.favorite === p.id ? '★ ' : ''}${p.number} ${esc(p.lastName)}</b>
+      <b>${this.club.favorite === p.id ? '★ ' : ''}${p.number} ${esc(shortName(p, this.club.players))}</b>
       <span>${POS[p.pos]} · ${overall(p)}${inj ? ' · 🩹' : ''}</span></div>`;
   }
 

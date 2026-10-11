@@ -9,9 +9,13 @@ import { Input, isTouchDevice } from './ui/input.js';
 import { Hud } from './ui/hud.js';
 import { Menus } from './ui/menus.js';
 import { ClubEditor } from './ui/clubEditor.js';
-import { createDefaultClub, clubTeamData, chooseKits, clubAfterMatch } from './club/club.js';
+import { createDefaultClub, clubTeamData, chooseKits, clubAfterMatch, clubAfterGame } from './club/club.js';
+import { CareerUI } from './ui/careerUI.js';
+import { loadCareer, saveCareer } from './save/careerStore.js';
+import { createCareer, ownFixture, getTeam, playEvent, startNextSeason, OWN } from './league/career.js';
 import { loadClub, saveClub } from './save/clubStore.js';
 import { STAT_NAMES, FOCI, INTENSITY } from './club/training.js';
+import { shortName } from './club/names.js';
 import { loadSettings, saveSettings } from './save/settings.js';
 import { applyTeamPrefs, recordMatchInjuries } from './club/teamStore.js';
 import { celebrationName } from './club/celebrations.js';
@@ -31,6 +35,8 @@ class App {
     this.hud = new Hud();
     this.menus = new Menus(this);
     this.clubEditor = new ClubEditor(this);
+    this.careerUI = new CareerUI(this);
+    this.career = loadCareer();
     this.mode = 'menu';
     this.paused = false;
     this.acc = 0;
@@ -93,10 +99,15 @@ class App {
     // eigenes Team spielt immer zuerst von links nach rechts; Gast evtl. im Auswärtstrikot
     const teams = chooseKits(all[pick], all[opp]);
     this.friendlyTeams = teams;
+    this.matchKind = 'friendly';
     this.match = new Match({
       teams, humanTeam: 0, difficulty: this.settings.difficulty,
       settings: { autoChange: this.settings.autoChange, autoGoalie: this.settings.autoGoalie },
     });
+    this.beginMatch();
+  }
+
+  beginMatch() {
     this.renderer.setMatch(this.match);
     this.mode = 'match';
     this.paused = false;
@@ -197,10 +208,92 @@ class App {
     this.renderer.render(this.paused ? 0 : dt);
   }
 
+  // ------------------------------------------------------------ Karriere
+
+  saveCareer() {
+    if (this.career && !saveCareer(this.career)) this.hud.toast('Karriere konnte nicht gespeichert werden', 3);
+    this.saveClub();
+  }
+
+  newCareer() {
+    this.career = createCareer(this.club);
+    this.saveCareer();
+    this.careerUI.hub();
+  }
+
+  toCareerHub() {
+    this.paused = false;
+    this.startDemo();
+    this.careerUI.hub();
+  }
+
+  // Eigenes Spiel des aktuellen Ereignisses live spielen
+  startCareerMatch() {
+    const c = this.career;
+    const f = ownFixture(c);
+    if (!f) return;
+    const ownHome = f.h === OWN;
+    const own = { ...clubTeamData(this.club), id: OWN };
+    const opp = getTeam(c, this.club, ownHome ? f.a : f.h);
+    const [hd, ad] = chooseKits(ownHome ? own : opp, ownHome ? opp : own);
+    const teams = ownHome ? [hd, ad] : [ad, hd];
+    this.match = new Match({
+      teams, humanTeam: 0, home: ownHome ? 0 : 1, difficulty: this.settings.difficulty,
+      settings: { autoChange: this.settings.autoChange, autoGoalie: this.settings.autoGoalie },
+    });
+    this.matchKind = 'career';
+    this.careerFixture = { ownHome, oppId: opp.id };
+    this.friendlyTeams = null;
+    this.beginMatch();
+  }
+
+  // Ereignis ohne eigenes Live-Spiel abschliessen (eigenes Spiel simuliert)
+  simulateCareerEvent() {
+    const c = this.career;
+    const had = !!ownFixture(c);
+    const ev = playEvent(c, this.club, null);
+    let extra = '';
+    if (had) {
+      const g = ev.games.find(x => x.h === OWN || x.a === OWN);
+      const gf = g.h === OWN ? g.gh : g.ga, ga = g.h === OWN ? g.ga : g.gh;
+      const r = clubAfterGame(this.club, { gf, ga }, false);
+      extra = this.trainingSummary(r.training);
+      this.hud.toast(`Simuliert: ${gf}:${ga}`, 2.5);
+    }
+    this.saveCareer();
+    this.careerUI.hub();
+    if (extra) this.careerUI.appendNote(extra);
+  }
+
+  // Resultat des Live-Spiels in die Karriere übernehmen
+  finishCareerMatch(m) {
+    const { ownHome, oppId } = this.careerFixture;
+    const own = m.teams[0], opp = m.teams[1];
+    const goals = m.goals.filter(g => !g.ownGoal).map(g => ({
+      team: g.team === 0 ? OWN : oppId, scorer: g.scorer.id, assist: g.assist ? g.assist.id : null,
+    }));
+    const result = {
+      gh: ownHome ? own.score : opp.score, ga: ownHome ? opp.score : own.score,
+      type: m.result ? m.result.type : 'regular', goals,
+    };
+    // Verletzungen des Gegners bleiben bestehen
+    for (const i of m.rules.injuries) if (!i.team.own) i.player.injury = { level: i.level, games: i.games };
+    playEvent(this.career, this.club, result);
+    const r = clubAfterGame(this.club, { gf: own.score, ga: opp.score, injuries: m.rules.injuries.filter(i => i.team.own) }, false);
+    this.saveCareer();
+    return this.trainingSummary(r.training);
+  }
+
+  nextCareerSeason() {
+    startNextSeason(this.career, this.club);
+    this.saveCareer();
+    this.careerUI.agingReport();
+  }
+
   trainingSummary(rep) {
     const t = this.club.training;
-    const imp = rep.improved.map(x => `${x.player.lastName} ${STAT_NAMES[x.stat]} ${x.value}`);
-    const inj = rep.injured.map(x => `🩹 ${x.player.lastName} im Training verletzt (${x.games} ${x.games === 1 ? 'Spiel' : 'Spiele'})`);
+    const imp = rep.improved.map(x => `${shortName(x.player, this.club.players)} ${STAT_NAMES[x.stat]} ${x.value}`);
+    const inj = rep.injured.map(x => `🩹 ${shortName(x.player, this.club.players)} im Training verletzt (${x.games} ${x.games === 1 ? 'Spiel' : 'Spiele'})`);
     return `<p class="hint train-sum"><b>Training</b> (${FOCI[t.focus].label}, ${INTENSITY[t.intensity].label}): ${imp.length ? '📈 ' + imp.join(', ') : 'noch keine neuen Punkte'}${inj.length ? '<br>' + inj.join(', ') : ''}</p>`;
   }
 
@@ -253,6 +346,11 @@ class App {
           this.menus.intermission(m);
           break;
         case 'gameEnd': {
+          if (this.matchKind === 'career') {
+            const extra = this.finishCareerMatch(m);
+            this.menus.end(m, [], extra, true);
+            break;
+          }
           const others = (this.friendlyTeams || []).filter(t => !t.own);
           const healed = recordMatchInjuries(others, m.rules.injuries.filter(i => !i.team.own));
           let extra = '';

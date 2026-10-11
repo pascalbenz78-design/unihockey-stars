@@ -329,3 +329,45 @@ Konkrete Festlegungen während des Baus (Werte stehen in `js/config.js`).
   ×1.6 mit 3 %). Fortschritt sammelt sich pro Wert bis zum nächsten Punkt;
   junge Spieler lernen schneller, hohe Werte steigen langsamer. Bericht auf
   dem Schlussbildschirm und im Tab Training.
+
+### Namen
+- Gibt es einen Nachnamen im gleichen Team (bzw. in der gleichen Liste)
+  mehrfach, wird die Vornamen-Initiale vorangestellt («A. Meier»,
+  «D. Meier»); bei gleicher Initiale der ganze Vorname (Pascals Wunsch).
+  In Listen über mehrere Teams (Torschützen) immer mit Initiale.
+
+### Etappe 4: Ligen und Saison
+- Ligawelt: 40 Teams, 5 Ligen à 8. Eigener Verein startet in Liga 5,
+  Alpenblitz und Seewölfe in Liga 3, die übrigen 37 Teams haben erfundene
+  Maskottchen-Namen, Zufallstrikots und Zufallslogos. Grundstärke (Spielerwert
+  der 1. Linie): Liga 1 ≈ 74, 2 ≈ 68, 3 ≈ 62, 4 ≈ 56, 5 ≈ 51 (±4 pro Team).
+  Alle Kader werden mit ganzer Spielerliste gespeichert (~300 KB).
+- Saison: Kreisverfahren-Spielplan mit Hin- und Rückrunde (14 Runden). Jede
+  Runde: eigenes Spiel live oder simuliert, alle anderen Spiele simuliert.
+- Simulation: Teamstärke aus den drei Linien (45/33/22 %) und dem Goalie,
+  Tore poisson-verteilt (Grundwert 2.9, Stärkeverhältnis hoch 3, Heimvorteil
+  7 %). Unentschieden: 55 % Tor in der Verlängerung, sonst Penaltys. Schnitt
+  ca. 5.6 Tore pro Spiel, ~15 % Entscheidungen n.V./n.P. Torschützen und
+  Assists gewichtet nach Schuss/Pass und Linie.
+- Tabelle: Punkte (3/2/1/0), Tordifferenz, erzielte Tore. Markierung:
+  Rang 1–4 Playoffs, Rang 7 Barrage (nicht in Liga 1), Rang 8 Abstieg (nicht
+  in Liga 5).
+- Cup: 7 Runden, nach den Ligarunden 1, 3, 5, 7, 9, 11, 13. Liga 4+5 starten
+  in der 1. Runde, Liga 3 in der 2., Liga 2 in der 3., Liga 1 im Achtelfinal
+  (immer 16 Teams pro Runde bis zum Achtelfinal). Einzelspiele, das tiefer
+  klassierte Team hat Heimrecht. Zählt nicht für die Torschützenliste.
+- Playoffs nach Runde 14, alle Ligen parallel: Halbfinal 1–4 und 2–3, Final,
+  je Best-of-3, Spiel 1 und 3 beim Besserklassierten. Danach Barragen
+  (Rang 7 oben gegen Finalverlierer unten, Best-of-3, oberes Team mit
+  Heimvorteil). Auf-/Abstieg wird erst beim Start der neuen Saison angewendet.
+- Saisonziel nach Stärkerang im eigenen Feld: Rang 1–2 Aufstieg (Liga 1:
+  Meister), 3–4 Playoffs, 5–6 Barrage vermeiden (Liga 5: mindestens Rang 6),
+  7–8 Klassenerhalt. Bewertung: erreicht / übertroffen / verpasst.
+- Verletzungen heilen in der Karriere pro Spieltag (auch ohne eigenes Spiel).
+  Training und Bilanz nach jedem eigenen Spiel (auch simuliert).
+- Saisonwechsel: alle Spieler +1 Jahr. Entwicklung bis 21 +1..+3, bis 24
+  0..+2, bis 28 −1..+1, bis 31 −2..0, danach −3..−1 pro Wert. Rücktritt ab 33
+  (25 %), ab 35 (60 %), ab 37 sicher; Ersatz durch einen 17–19-jährigen
+  Junior auf derselben Position. KI-Teams werden halb an das Niveau ihrer
+  neuen Liga angeglichen. Sommerpause: alle wieder gesund.
+- Karriere wird nach jedem Spieltag gespeichert (`unihockey-stars.career`).

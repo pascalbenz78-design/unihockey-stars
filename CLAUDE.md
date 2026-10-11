@@ -16,8 +16,8 @@
 |---|---|---|
 | 1 | Spielbarer Match | abgenommen |
 | 2 | Regeln, Verletzungen, Torjubel | abgenommen |
-| 3 | Eigener Verein | fertig, wartet auf Abnahme |
-| 4 | Ligen und Saison | offen |
+| 3 | Eigener Verein | abgenommen |
+| 4 | Ligen und Saison | fertig, wartet auf Abnahme |
 | 5 | Geld, Halle, Transfers | offen |
 | 6 | Speichern mit Code, Ton, Feinschliff | offen |
 
@@ -30,6 +30,7 @@
   - `node tools/humantest.mjs [Schwierigkeit] [Sekunden] [Spiele]` – einfacher
     Mensch-Bot gegen KI (Schwierigkeits-Abstimmung)
   - `node tools/actiontest.mjs` – alle Tasten-Aktionen, Strafe, Verletzung
+  - `node tools/careertest.mjs [Saisons]` – ganze Karriere-Saisons (Ligen, Cup, Playoffs, Barrage, Auf-/Abstieg)
 - Im Browser (Konsole): `__uh.run(sek, fps, eingabe)` spielt Bilder manuell ab
   (der eingebaute Browser liefert verdeckt keine Animationsbilder),
   `__uh.sim(sek)` rechnet nur die Logik, `__uh.match` ist das laufende Spiel,

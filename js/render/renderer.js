@@ -140,7 +140,7 @@ export class Renderer {
     const c = match.ball;
     this.camTarget.set(c.x, 0, -c.y);
     // Logo des Heimteams im Mittelkreis, beide Logos auf den Banden
-    const home = match.teams[0].data;
+    const home = match.teams[match.home || 0].data;
     this.arena.paintCenter(home.logo || null, home.name);
     this.arena.paintAds(match.teams.map(t => t.data));
   }

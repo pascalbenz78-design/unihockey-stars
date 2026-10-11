@@ -4,6 +4,7 @@
 import { CONFIG } from '../config.js';
 import { injuredPlayers } from '../club/teamStore.js';
 import { logoDataURL } from '../club/logo.js';
+import { teamName } from '../club/names.js';
 import { FOUL_NAMES, INJURY_NAMES } from '../match/rules.js';
 
 
@@ -39,11 +40,11 @@ export class Menus {
       </button>
       <div class="menu-col">
         <button class="primary big" data-act="friendly">Freundschaftsspiel</button>
-        <button class="big" disabled title="folgt in Etappe 4">Karriere <small>(bald)</small></button>
+        <button class="big" data-act="career">Karriere${this.app.career ? ' <small>(weiter)</small>' : ''}</button>
         <button data-act="settings">Einstellungen</button>
         <button data-act="help">Anleitung</button>
       </div>
-      <p class="ver">Version ${CONFIG.version} · Etappe 3</p>`, 'main');
+      <p class="ver">Version ${CONFIG.version} · Etappe 4</p>`, 'main');
   }
 
   friendly() {
@@ -167,7 +168,7 @@ export class Menus {
       <div class="menu-row"><button class="primary big" data-act="nextPeriod">${btn}</button></div>`, 'wide');
   }
 
-  end(match, healed = [], extra = '') {
+  end(match, healed = [], extra = '', career = false) {
     this.screen = 'end';
     const h = match.human ? match.human.team : null;
     let title = 'Schlussresultat';
@@ -185,9 +186,9 @@ export class Menus {
       ${this.goalList(match)}
       ${this.summary(match, healed)}
       ${extra}
-      <div class="menu-row">
+      <div class="menu-row">${career ? '<button class="primary big" data-act="careerNext">Weiter</button>' : `
         <button data-act="main">Hauptmenü</button>
-        <button class="primary big" data-act="start">Revanche</button>
+        <button class="primary big" data-act="start">Revanche</button>`}
       </div>`, 'wide');
   }
 
@@ -195,7 +196,7 @@ export class Menus {
     const items = [];
     for (const l of m.rules.log) {
       const t = m.teams[l.team];
-      items.push(`<li>✋ <b style="color:${t.data.colors.shirt}">${t.data.short}</b> 2 Min. ${l.player.lastName} – ${FOUL_NAMES[l.type]}</li>`);
+      items.push(`<li>✋ <b style="color:${t.data.colors.shirt}">${t.data.short}</b> 2 Min. ${teamName(l.player, t.data)} – ${FOUL_NAMES[l.type]}</li>`);
     }
     for (const i of m.rules.injuries) {
       items.push(`<li>🩹 <b>${i.team.short}</b> ${i.player.firstName} ${i.player.lastName}: ${INJURY_NAMES[i.level]}, ${i.games} ${i.games === 1 ? 'Spiel' : 'Spiele'} Pause</li>`);
@@ -235,7 +236,7 @@ export class Menus {
       const t = m.teams[g.team];
       const time = clockText((g.period > 3 ? 300 : 1200) - g.clock);
       const who = g.ownGoal ? 'Eigentor' : `${g.scorer.firstName} ${g.scorer.lastName} (${g.scorer.number})`;
-      const as = g.assist ? ` · Assist ${g.assist.lastName}` : '';
+      const as = g.assist ? ` · Assist ${teamName(g.assist, t.data)}` : '';
       const per = g.period > 3 ? 'V' : g.period + '.';
       const pp = g.pp === 'PP' ? ' <small class="hint">(PP)</small>' : g.pp === 'SH' ? ' <small class="hint">(Unterzahl)</small>' : '';
       return `<li><span class="gt">${per} / ${time}</span> <b style="color:${t.data.colors.shirt}">${t.data.short}</b> ${who}${as}${pp}</li>`;
@@ -251,6 +252,7 @@ export class Menus {
       case 'pickOpp': this.opp = +val; this.friendly(); break;
       case 'start': app.startFriendly(this.pick ?? 0, this.opp ?? 1); break;
       case 'club': app.clubEditor.open(); break;
+      case 'career': app.careerUI.start(); break;
       case 'settings': this.settings(this.screen); break;
       case 'help': this.help(this.screen); break;
       case 'back': {
@@ -268,7 +270,7 @@ export class Menus {
       case 'resume': app.resume(); break;
       case 'quit': app.toMenu(); break;
       case 'nextPeriod': app.nextPeriod(); break;
-      default: app.clubEditor.onAction(act, val); break;
+      default: if (!app.careerUI.onAction(act, val)) app.clubEditor.onAction(act, val); break;
     }
   }
 }

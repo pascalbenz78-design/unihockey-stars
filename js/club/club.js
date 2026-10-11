@@ -60,25 +60,33 @@ export function chooseKits(home, away) {
   return [a, { ...away, colors: awayColors }];
 }
 
-// Nach einem eigenen Spiel: Verletzungen, Bilanz, Training
-export function clubAfterMatch(club, match, ownIndex) {
-  const newInj = match.rules.injuries.filter(i => i.team.own);
-  const fresh = new Set(newInj.map(i => i.player.id));
+// Nach einem eigenen Spiel: Verletzungen, Bilanz, Training.
+// heal = false in der Karriere (dort heilen Verletzungen pro Spieltag).
+export function clubAfterMatch(club, match, ownIndex, heal = true) {
+  const own = match.teams[ownIndex], opp = match.other(own);
+  return clubAfterGame(club, {
+    gf: own.score, ga: opp.score, injuries: match.rules.injuries.filter(i => i.team.own),
+  }, heal);
+}
+
+export function clubAfterGame(club, { gf, ga, injuries = [] }, heal = true) {
+  const fresh = new Set(injuries.map(i => i.player.id));
   const healed = [];
-  for (const p of club.players) {
-    if (p.injury && p.injury.games > 0 && !fresh.has(p.id)) {
-      p.injury.games -= 1;
-      if (p.injury.games <= 0) { p.injury = null; healed.push(p); }
+  if (heal) {
+    for (const p of club.players) {
+      if (p.injury && p.injury.games > 0 && !fresh.has(p.id)) {
+        p.injury.games -= 1;
+        if (p.injury.games <= 0) { p.injury = null; healed.push(p); }
+      }
     }
   }
-  for (const i of newInj) {
+  for (const i of injuries) {
     const p = club.players.find(x => x.id === i.player.id);
     if (p) p.injury = { level: i.level, games: i.games };
   }
-  const own = match.teams[ownIndex], opp = match.other(own);
   club.record.played++;
-  if (own.score > opp.score) club.record.won++; else club.record.lost++;
-  club.record.goalsFor += own.score; club.record.goalsAgainst += opp.score;
+  if (gf > ga) club.record.won++; else club.record.lost++;
+  club.record.goalsFor += gf; club.record.goalsAgainst += ga;
   const training = runTraining(club);
   club.lastReport = {
     improved: training.improved.map(x => ({ id: x.player.id, stat: x.stat, value: x.value })),

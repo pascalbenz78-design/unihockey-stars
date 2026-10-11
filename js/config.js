@@ -2,7 +2,7 @@
 // Geschwindigkeiten in m/s. Spielerwerte (Tempo, Schuss …) gehen von 1 bis 99.
 
 export const CONFIG = {
-  version: '0.3.0',
+  version: '0.4.0',
 
   field: {
     length: 40,
