@@ -8,6 +8,8 @@ import {
 } from '../league/career.js';
 import { logoDataURL } from '../club/logo.js';
 import { shortName } from '../club/names.js';
+import { FinanceUI } from './financeUI.js';
+import { chf } from '../league/finance.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const TYPE = { regular: '', ot: ' n.V.', so: ' n.P.' };
@@ -21,6 +23,7 @@ export class CareerUI {
     this.logos = new Map();
     this.tableL = null;
     this.scorerScope = 'own';
+    this.fin = new FinanceUI(app, this);
   }
 
   get c() { return this.app.career; }
@@ -88,7 +91,9 @@ export class CareerUI {
     const last = c.lastEvent ? this.lastEventHtml(c.lastEvent) : '';
     this.show(`
       <div class="club-head"><img class="club-logo" src="${logoDataURL(club.logo, 112)}" alt="">
-        <div><h2>${esc(club.name)}</h2><span class="hint">Saison ${seasonLabel(c)} · ${leagueName(L)} · Ziel: ${esc(c.goal.text)}</span></div></div>
+        <div><h2>${esc(club.name)}</h2><span class="hint">Saison ${seasonLabel(c)} · ${leagueName(L)} · Ziel: ${esc(c.goal.text)}</span>
+          <span class="balance">💰 ${chf(c.finance.balance)}</span></div></div>
+      ${this.todo()}
       <div class="hub">
         <div>${next}${last}</div>
         <div><h3>${leagueName(L)}</h3>${this.tableHtml(L, true)}</div>
@@ -98,7 +103,21 @@ export class CareerUI {
         <button data-act="carCup">Cup</button><button data-act="carBracket">Playoffs</button>
         <button data-act="carScorers">Torschützen</button><button data-act="carClub">Mein Verein</button>
         <button data-act="main">Hauptmenü</button>
+      </div>
+      <div class="menu-row nav">
+        <button data-act="carFinance">💰 Finanzen</button><button data-act="carHall">🏟 Halle</button>
+        <button data-act="carSponsors">🤝 Sponsoren</button><button data-act="carMarket">🔁 Transfers</button>
+        <button data-act="carYouth">🌱 Nachwuchs</button>
       </div>`);
+  }
+
+  // Hinweise auf offene Aufgaben
+  todo() {
+    const f = this.c.finance, items = [];
+    if (!f.sponsors.length && this.c.phase === 'regular') items.push('<button data-act="carSponsors">Noch keine Sponsoren gewählt – jetzt auswählen ›</button>');
+    if (f.juniors.length) items.push(`<button data-act="carYouth">${f.juniors.length} Junioren warten auf ihre Chance ›</button>`);
+    if (f.balance < 0) items.push('<span class="injured">⚠ Konto im Minus</span>');
+    return items.length ? `<div class="todo">${items.join('')}</div>` : '';
   }
 
   // Zusatzhinweis (z. B. Trainingsbericht) unter der Zentrale anzeigen
@@ -281,7 +300,7 @@ export class CareerUI {
       case 'carSeasonEnd': this.seasonEnd(); return true;
       case 'carNextSeason': app.nextCareerSeason(); return true;
       case 'careerNext': app.toCareerHub(); return true;
-      default: return false;
+      default: return this.fin.onAction(act, val);
     }
   }
 }

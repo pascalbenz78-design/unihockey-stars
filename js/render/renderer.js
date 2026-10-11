@@ -142,7 +142,8 @@ export class Renderer {
     // Logo des Heimteams im Mittelkreis, beide Logos auf den Banden
     const home = match.teams[match.home || 0].data;
     this.arena.paintCenter(home.logo || null, home.name);
-    this.arena.paintAds(match.teams.map(t => t.data));
+    this.arena.paintAds(match.teams.map(t => t.data), match.sponsors || null);
+    this.arena.setHall(match.hall || { stands: 2, scoreboard: 1, fill: 0.75 });
   }
 
   render(dt, extra = {}) {

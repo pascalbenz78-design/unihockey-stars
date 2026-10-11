@@ -38,7 +38,7 @@ export function createDefaultClub() {
 export function clubTeamData(club) {
   return {
     name: club.name, short: club.short, colors: club.kits.home, kits: club.kits, logo: club.logo,
-    players: club.players, lines: club.lines, goalies: club.goalies, subs: club.subs,
+    players: club.players, lines: club.lines, goalies: club.goalies, subs: club.subs, reserve: club.reserve || [],
     favorite: club.favorite, goldStick: club.goldStick, own: true,
   };
 }
@@ -69,7 +69,8 @@ export function clubAfterMatch(club, match, ownIndex, heal = true) {
   }, heal);
 }
 
-export function clubAfterGame(club, { gf, ga, injuries = [] }, heal = true) {
+export function clubAfterGame(club, { gf, ga, injuries = [] }, heal = true, physio = 0) {
+  const short = g => Math.max(1, Math.round(g * (1 - 0.15 * physio)));   // Physiotherapie verkürzt Ausfälle
   const fresh = new Set(injuries.map(i => i.player.id));
   const healed = [];
   if (heal) {
@@ -82,12 +83,13 @@ export function clubAfterGame(club, { gf, ga, injuries = [] }, heal = true) {
   }
   for (const i of injuries) {
     const p = club.players.find(x => x.id === i.player.id);
-    if (p) p.injury = { level: i.level, games: i.games };
+    if (p) p.injury = { level: i.level, games: short(i.games) };
   }
   club.record.played++;
   if (gf > ga) club.record.won++; else club.record.lost++;
   club.record.goalsFor += gf; club.record.goalsAgainst += ga;
   const training = runTraining(club);
+  for (const x of training.injured) { x.games = short(x.games); x.player.injury.games = x.games; }
   club.lastReport = {
     improved: training.improved.map(x => ({ id: x.player.id, stat: x.stat, value: x.value })),
     injured: training.injured.map(x => ({ id: x.player.id, level: x.level, games: x.games })),

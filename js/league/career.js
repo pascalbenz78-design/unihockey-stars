@@ -9,6 +9,7 @@ import { overall } from '../club/training.js';
 import { TEAM_NAMES, createAITeam, renumber } from './teams.js';
 import { simulateGame, teamStrength } from './sim.js';
 import { ageTeam, adjustToLevel } from './aging.js';
+import { initFinance, newSeasonFinance, financeAfterEvent, financeSeasonEnd } from './finance.js';
 
 export const OWN = 'OWN';
 export const LEAGUE_LEVELS = [74, 68, 62, 56, 51];
@@ -50,6 +51,7 @@ export function createCareer(club, rand = Math.random) {
       c.leagues[L].push(id);
     }
   }
+  initFinance(c, club, rand);
   startSeason(c, club, rand);
   return c;
 }
@@ -196,6 +198,8 @@ export function playEvent(c, club, ownResult = null, rand = Math.random) {
     c.schedule.forEach((rounds, L) => { c.results[L][ev.round] = played.filter(p => p.f.L === L).map(({ f, ...g }) => g); });
   }
   healTick(c, club);
+  const ownRank = standings(c, ownLeague(c)).findIndex(r => r.id === OWN) + 1;
+  financeAfterEvent(c, club, ev, played, ownRank);
   c.lastEvent = { label: eventLabel(c, ev), kind: ev.kind, games: played.map(({ f, ...g }) => g) };
   advance(c, club, ev, rand);
   return c.lastEvent;
@@ -243,6 +247,7 @@ function advance(c, club, ev, rand) {
     if (c.barrages.series.every(s => s.winner)) {
       c.phase = 'end';
       c.summary = seasonSummary(c, club);
+      financeSeasonEnd(c, c.summary);
     } else c.barrages.game++;
   }
   prepareEvent(c, rand);
@@ -393,11 +398,12 @@ export function startNextSeason(c, club, rand = Math.random) {
     ownMove: s.ownMove ? (s.ownMove.to < s.ownMove.from ? 'up' : 'down') : null,
   });
   const newId = () => c.nextId++;
-  const ownData = clubTeamData(club);
+  const ownData = { ...clubTeamData(club), reserve: club.reserve || [] };
   const aging = { own: ageTeam(ownData, rand, newId), ai: 0 };
   // Rücktritte im eigenen Verein: Goalie- und Ersatzlisten zurückschreiben
   club.goalies = ownData.goalies;
   club.subs = ownData.subs;
+  club.reserve = ownData.reserve;
   syncClub(club, aging.own);
   c.leagues.forEach((ids, L) => ids.forEach(id => {
     if (id === OWN) return;
@@ -417,6 +423,7 @@ export function startNextSeason(c, club, rand = Math.random) {
   };
   c.season++;
   c.year++;
+  if (c.finance) newSeasonFinance(c, club, rand);
   startSeason(c, club, rand);
 }
 

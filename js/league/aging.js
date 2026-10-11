@@ -53,6 +53,7 @@ export function replacePlayer(team, oldP, newP) {
   for (const l of team.lines) for (const k in l) if (l[k] === oldP.id) l[k] = newP.id;
   team.goalies = team.goalies.map(id => (id === oldP.id ? newP.id : id));
   team.subs = team.subs.map(id => (id === oldP.id ? newP.id : id));
+  if (team.reserve) team.reserve = team.reserve.map(id => (id === oldP.id ? newP.id : id));
 }
 
 // KI-Team an das Niveau seiner Liga heranführen (nach Auf-/Abstieg)

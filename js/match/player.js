@@ -135,7 +135,8 @@ export class MPlayer {
   }
 
   recover(dt) {
-    this.stamina = Math.min(1, this.stamina + ST.recoverBench * dt);
+    // Garderobe (Ausbau) verbessert die Erholung
+    this.stamina = Math.min(1, this.stamina + ST.recoverBench * dt * (this.team.data.regen || 1));
   }
 
   playAnim(action, dir = 0) {

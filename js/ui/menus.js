@@ -44,7 +44,7 @@ export class Menus {
         <button data-act="settings">Einstellungen</button>
         <button data-act="help">Anleitung</button>
       </div>
-      <p class="ver">Version ${CONFIG.version} · Etappe 4</p>`, 'main');
+      <p class="ver">Version ${CONFIG.version} · Etappe 5</p>`, 'main');
   }
 
   friendly() {

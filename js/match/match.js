@@ -810,7 +810,7 @@ export class Match {
     this.clock = this.isOT ? T.otGameSeconds : T.periodGameSeconds;
     for (const t of this.teams) {
       t.side *= -1;
-      for (const p of t.players.values()) p.stamina = Math.min(1, p.stamina + 0.5);
+      for (const p of t.players.values()) p.stamina = Math.min(1, p.stamina + 0.5 * (t.data.regen || 1));
     }
     this.setupFaceoff({ x: 0, y: 0 });
   }

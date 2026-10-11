@@ -12,7 +12,8 @@ import { ClubEditor } from './ui/clubEditor.js';
 import { createDefaultClub, clubTeamData, chooseKits, clubAfterMatch, clubAfterGame } from './club/club.js';
 import { CareerUI } from './ui/careerUI.js';
 import { loadCareer, saveCareer } from './save/careerStore.js';
-import { createCareer, ownFixture, getTeam, playEvent, startNextSeason, OWN } from './league/career.js';
+import { createCareer, ownFixture, getTeam, playEvent, startNextSeason, OWN, currentEvent, standings, ownLeague } from './league/career.js';
+import { initFinance, hallOf, attendance, CAPACITY } from './league/finance.js';
 import { loadClub, saveClub } from './save/clubStore.js';
 import { STAT_NAMES, FOCI, INTENSITY } from './club/training.js';
 import { shortName } from './club/names.js';
@@ -37,6 +38,7 @@ class App {
     this.clubEditor = new ClubEditor(this);
     this.careerUI = new CareerUI(this);
     this.career = loadCareer();
+    if (this.career && !this.career.finance) { initFinance(this.career, this.club); saveCareer(this.career); }
     this.mode = 'menu';
     this.paused = false;
     this.acc = 0;
@@ -115,7 +117,7 @@ class App {
     this.hud.setTeams(this.match);
     this.hud.show(true);
     this.showTouch(this.touch);
-    this.hud.message('1. Drittel', 1.6, 'small');
+    this.hud.message(this.matchKind === 'career' && this.spectators ? `1. Drittel<small>${this.spectators.toLocaleString('de-CH')} Zuschauer</small>` : '1. Drittel', 2, 'small');
     this.input.clear();
     this.tryFullscreen();
   }
@@ -233,7 +235,8 @@ class App {
     const f = ownFixture(c);
     if (!f) return;
     const ownHome = f.h === OWN;
-    const own = { ...clubTeamData(this.club), id: OWN };
+    const fac = c.finance.facilities;
+    const own = { ...clubTeamData(this.club), id: OWN, regen: 1 + 0.15 * fac.locker };
     const opp = getTeam(c, this.club, ownHome ? f.a : f.h);
     const [hd, ad] = chooseKits(ownHome ? own : opp, ownHome ? opp : own);
     const teams = ownHome ? [hd, ad] : [ad, hd];
@@ -242,6 +245,15 @@ class App {
       settings: { autoChange: this.settings.autoChange, autoGoalie: this.settings.autoGoalie },
     });
     this.matchKind = 'career';
+    // Halle des Heimteams, Auslastung, Sponsoren auf den Banden
+    const ev = currentEvent(c);
+    const hall = hallOf(c, ownHome ? OWN : opp.id);
+    const rank = standings(c, ownLeague(c)).findIndex(r => r.id === OWN) + 1;
+    const oppL = c.leagues.findIndex(l => l.includes(opp.id));
+    const spectators = ownHome ? attendance(c, rank, ev.kind, oppL) : Math.round(CAPACITY[hall.stands] * (0.55 + Math.random() * 0.35));
+    this.match.hall = { ...hall, fill: spectators / CAPACITY[hall.stands] };
+    this.match.sponsors = ownHome ? c.finance.sponsors : null;
+    this.spectators = spectators;
     this.careerFixture = { ownHome, oppId: opp.id };
     this.friendlyTeams = null;
     this.beginMatch();
@@ -256,7 +268,7 @@ class App {
     if (had) {
       const g = ev.games.find(x => x.h === OWN || x.a === OWN);
       const gf = g.h === OWN ? g.gh : g.ga, ga = g.h === OWN ? g.ga : g.gh;
-      const r = clubAfterGame(this.club, { gf, ga }, false);
+      const r = clubAfterGame(this.club, { gf, ga }, false, c.finance.facilities.physio);
       extra = this.trainingSummary(r.training);
       this.hud.toast(`Simuliert: ${gf}:${ga}`, 2.5);
     }
@@ -279,7 +291,7 @@ class App {
     // Verletzungen des Gegners bleiben bestehen
     for (const i of m.rules.injuries) if (!i.team.own) i.player.injury = { level: i.level, games: i.games };
     playEvent(this.career, this.club, result);
-    const r = clubAfterGame(this.club, { gf: own.score, ga: opp.score, injuries: m.rules.injuries.filter(i => i.team.own) }, false);
+    const r = clubAfterGame(this.club, { gf: own.score, ga: opp.score, injuries: m.rules.injuries.filter(i => i.team.own) }, false, this.career.finance.facilities.physio);
     this.saveCareer();
     return this.trainingSummary(r.training);
   }

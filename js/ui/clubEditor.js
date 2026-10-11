@@ -162,6 +162,7 @@ export class ClubEditor {
     const c = this.club;
     if (key[0] === 'L') { const [l, r] = key.slice(1).split('.'); return c.lines[+l][r]; }
     if (key[0] === 'G') return c.goalies[+key.slice(1)];
+    if (key[0] === 'R') return (c.reserve || [])[+key.slice(1)];
     return c.subs[+key.slice(1)];
   }
 
@@ -169,6 +170,7 @@ export class ClubEditor {
     const c = this.club;
     if (key[0] === 'L') { const [l, r] = key.slice(1).split('.'); c.lines[+l][r] = id; }
     else if (key[0] === 'G') c.goalies[+key.slice(1)] = id;
+    else if (key[0] === 'R') c.reserve[+key.slice(1)] = id;
     else c.subs[+key.slice(1)] = id;
   }
 
@@ -195,7 +197,8 @@ export class ClubEditor {
       Verletzte (🩹) werden im Spiel automatisch ersetzt.</p>
       <div class="lines">${lines}</div>
       <div class="lines two"><div class="line"><h3>Goalies</h3><div class="formation g">${this.card('G0', 'Stammgoalie')}${this.card('G1', 'Ersatzgoalie')}</div></div>
-      <div class="line"><h3>Ersatz</h3><div class="formation g">${this.card('S0', 'Ersatz')}${this.card('S1', 'Ersatz')}${this.card('S2', 'Ersatz')}</div></div></div>`;
+      <div class="line"><h3>Ersatz</h3><div class="formation g">${this.card('S0', 'Ersatz')}${this.card('S1', 'Ersatz')}${this.card('S2', 'Ersatz')}</div></div></div>
+      ${(this.club.reserve || []).length ? `<div class="line"><h3>Reserve <small class="hint">(spielt nur, wenn jemand ausfällt)</small></h3><div class="formation r">${this.club.reserve.map((_, i) => this.card(`R${i}`, 'Reserve')).join('')}</div></div>` : ''}`;
   }
 
   swap(a, b) {

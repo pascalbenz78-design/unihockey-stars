@@ -371,3 +371,36 @@ Konkrete Festlegungen während des Baus (Werte stehen in `js/config.js`).
   Junior auf derselben Position. KI-Teams werden halb an das Niveau ihrer
   neuen Liga angeglichen. Sommerpause: alle wieder gesund.
 - Karriere wird nach jedem Spieltag gespeichert (`unihockey-stars.career`).
+
+### Etappe 5: Geld, Halle, Transfers
+- Nur in der Karriere. Startkapital 50'000 Fr. Werte in `js/league/finance.js`.
+- Zuschauer pro Heimspiel: Grundnachfrage je Liga (Liga 5: 300 … Liga 1:
+  1600) × Tabellenplatz (Rang 1 +25 %, je Rang −6 %) × Playoffs/Barrage 1.5 ×
+  Cup (1.1 + 25 % pro Liga Unterschied zum Gegner) × Hallenausbau (+15 % pro
+  Tribünenstufe), höchstens Kapazität (600 / 1200 / 2500 / 4500 / 8000).
+  Eintritt 8 bis 18 Fr. je Liga, Anzeigetafel +6 % pro Stufe.
+- Sponsoren: jede Saison 7 Angebote (Betrag je Liga, + Siegprämie), 3 Plätze +
+  1 pro Anzeigetafel-Stufe. Bezahlt pro Qualifikationsrunde (1/14). Die
+  Gewählten erscheinen bei Heimspielen auf den Banden.
+- Löhne pro Runde nach Stärke: 0.1 × (Stärke − 30)^2.2 (mind. 40 Fr.).
+- Prämien (× Ligafaktor 1 / 1.2 / 1.6 / 2.5 / 4 für Liga 5…1): Cupsiege je
+  Runde, Playoff-Halbfinal/-Final, Meistertitel, Aufstieg, Saisonziel.
+- Ausbau sofort wirksam, mit Unterhalt pro Runde:
+  Tribünen (4 Stufen, 40k–600k): mehr Plätze, sichtbar mehr Ränge;
+  Anzeigetafel (3 Stufen): mehr Einnahmen und Sponsorenplätze, grössere Tafel,
+  ab Stufe 2 Videowürfel über dem Feld; Garderobe (3): +15 % Erholung pro Stufe
+  auf der Bank und in den Drittelspausen; Physiotherapie (3): Verletzungen
+  15 % kürzer pro Stufe; Nachwuchsabteilung (3): 2 + Stufe Junioren, besseres
+  Niveau.
+- Halle im Spiel: Tribünenreihen und Publikum je nach Ausbau und Auslastung;
+  Gegnerhallen je nach Liga (Liga 1 gross, Liga 5 klein). Zuschauerzahl beim
+  Anpfiff.
+- Transfermarkt: 18 Spieler aus Teams der eigenen Liga ±1, alle zwei Runden
+  teilweise neu. Wert = 1000 × 1.13^(Stärke − 40) × Altersfaktor (bis 21 ×1.45,
+  bis 25 ×1.2, bis 29 ×1, bis 32 ×0.6, älter ×0.35); Kaufpreis Wert × 1.1–1.4,
+  Verkauf Wert × 0.85. Kader 20 bis 26 Spieler; Zukäufe und Junioren kommen in
+  die Reserve (auch per Drag & Drop einsetzbar). Beim Verkauf eines
+  Stammspielers rückt der beste passende Reservespieler nach.
+- Nachwuchs: Junioren (16–17 Jahre) zum Hochziehen; nicht hochgezogene gehen
+  am Saisonende.
+- Schlechte Finanzen: Konto im Minus → kein Kauf und kein Ausbau.

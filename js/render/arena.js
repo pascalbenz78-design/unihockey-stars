@@ -139,10 +139,13 @@ export class Arena {
   }
 
   // Banden: Sponsoren, dazu Logos der beiden Teams
-  paintAds(teams = []) {
+  paintAds(teams = [], sponsors = null) {
     const c = this.adCanvas, g = c.getContext('2d');
     const w = c.width / SPONSORS.length;
-    SPONSORS.forEach((s, i) => {
+    // gewählte Sponsoren des Heimteams zuerst, Rest mit Standard-Sponsoren auffüllen
+    const list = sponsors && sponsors.length
+      ? SPONSORS.map((d, i) => sponsors[i % sponsors.length] || d) : SPONSORS;
+    list.forEach((s, i) => {
       g.fillStyle = s.bg; g.fillRect(i * w, 0, w, c.height);
       g.fillStyle = s.fg;
       g.font = 'bold 30px Arial, sans-serif';
@@ -296,11 +299,16 @@ export class Arena {
     const seatA = new THREE.MeshStandardMaterial({ color: 0xb8262a, roughness: 0.7 });
     const rows = 10, depth = 0.85, rise = 0.48;
     this.seats = [];
-    const tier = (cx, cy, len, rot, start) => {
+    this.standRows = [];
+    // sichtbare Reihen je Ausbaustufe der Tribünen (0–4)
+    const ROWS = { far: [4, 6, 8, 10, 10], end: [0, 2, 4, 7, 10], near: [0, 0, 3, 6, 10] };
+    const unlock = (kind, r) => ROWS[kind].findIndex(n => n > r);
+    const tier = (cx, cy, len, rot, kind) => {
       // cx, cy: Feldmitte der ersten Reihe; rot: Blickrichtung zum Feld
       for (let r = 0; r < rows; r++) {
+        const lvl = unlock(kind, r);
         const step = new THREE.Mesh(new THREE.BoxGeometry(len, rise * (r + 1), depth), concrete);
-        const dist = start + r * depth;
+        const dist = r * depth;
         const ox = Math.cos(rot) * dist, oy = Math.sin(rot) * dist;
         step.position.set(cx + ox, rise * (r + 1) / 2, -(cy + oy));
         step.rotation.y = rot + Math.PI / 2;
@@ -310,36 +318,44 @@ export class Arena {
         seatRow.position.set(cx + ox, rise * (r + 1) + 0.04, -(cy + oy));
         seatRow.rotation.y = rot + Math.PI / 2;
         this.group.add(seatRow);
+        this.standRows.push({ meshes: [step, seatRow], lvl });
         // Sitzplätze für Zuschauer merken
         const n = Math.floor(len / 0.55);
         for (let i = 0; i < n; i++) {
           const t = (i + 0.5) / n - 0.5;
           const px = cx + ox + Math.cos(rot + Math.PI / 2) * t * len;
           const py = cy + oy + Math.sin(rot + Math.PI / 2) * t * len;
-          this.seats.push({ x: px, y: py, h: rise * (r + 1), rot });
+          this.seats.push({ x: px, y: py, h: rise * (r + 1), rot, lvl });
         }
       }
     };
-    tier(0, HALF_W + 3.2, 44, Math.PI / 2, 0);        // Gegenseite hinter den Bänken
-    tier(HALF_L + 2.5, 0, 22, 0, 0);                    // rechte Stirnseite
-    tier(-(HALF_L + 2.5), 0, 22, Math.PI, 0);           // linke Stirnseite
-    tier(0, -(HALF_W + 4), 36, -Math.PI / 2, 0);        // Kameraseite (meist ausserhalb des Bildes)
+    tier(0, HALF_W + 3.2, 44, Math.PI / 2, 'far');        // Gegenseite hinter den Bänken
+    tier(HALF_L + 2.5, 0, 22, 0, 'end');                    // rechte Stirnseite
+    tier(-(HALF_L + 2.5), 0, 22, Math.PI, 'end');           // linke Stirnseite
+    tier(0, -(HALF_W + 4), 36, -Math.PI / 2, 'near');       // Kameraseite (meist ausserhalb des Bildes)
     this.buildCrowd();
   }
 
   buildCrowd() {
     const max = this.q.crowd;
-    const seats = this.seats.slice().sort(() => Math.random() - 0.5).slice(0, max);
+    // vorne die Plätze, die schon mit kleinen Tribünen da sind
+    const seats = this.seats.map(s => ({ ...s, r: Math.random() })).sort((a, b) => a.lvl - b.lvl || a.r - b.r);
+    // Qualität begrenzt die Anzahl: gleichmässig ausdünnen
+    const step = Math.max(1, seats.length / max);
+    const pick = [];
+    for (let i = 0; i < seats.length && pick.length < max; i += step) pick.push(seats[Math.floor(i)]);
+    pick.sort((a, b) => a.lvl - b.lvl || a.r - b.r);
+    this.crowdUnlocked = [0, 1, 2, 3, 4].map(l => pick.filter(s => s.lvl <= l).length);
     const bodyGeo = new THREE.BoxGeometry(0.42, 0.55, 0.3);
     bodyGeo.translate(0, 0.42, 0);
     const headGeo = new THREE.SphereGeometry(0.12, 8, 6);
     headGeo.translate(0, 0.86, 0);
-    const bodies = new THREE.InstancedMesh(bodyGeo, new THREE.MeshStandardMaterial({ roughness: 0.9 }), seats.length);
-    const heads = new THREE.InstancedMesh(headGeo, new THREE.MeshStandardMaterial({ roughness: 0.8 }), seats.length);
+    const bodies = new THREE.InstancedMesh(bodyGeo, new THREE.MeshStandardMaterial({ roughness: 0.9 }), pick.length);
+    const heads = new THREE.InstancedMesh(headGeo, new THREE.MeshStandardMaterial({ roughness: 0.8 }), pick.length);
     const shirt = ['#d42a2a', '#1f5fbf', '#ffd400', '#ffffff', '#2b2b2b', '#2e8b57', '#ff7f27', '#7d3cff', '#e0e0e0', '#d42a2a'];
     const skin = ['#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#ffdbac'];
     const col = new THREE.Color();
-    this.crowdData = seats.map((s, i) => {
+    this.crowdData = pick.map((s, i) => {
       bodies.setColorAt(i, col.set(shirt[Math.floor(Math.random() * shirt.length)]));
       heads.setColorAt(i, col.set(skin[Math.floor(Math.random() * skin.length)]));
       return { ...s, ph: Math.random() * 10, amp: 0.5 + Math.random() * 0.8 };
@@ -353,14 +369,29 @@ export class Arena {
     this._s = new THREE.Vector3(1, 1, 1);
     this._up = new THREE.Vector3(0, 1, 0);
     this.crowdFrame = 0;
+    this.crowdCount = pick.length;
     this.updateCrowd(0, 0, true);
+  }
+
+  // Halle je nach Ausbau: Tribünenreihen, Publikum (Auslastung), Anzeigetafel
+  setHall({ stands = 4, scoreboard = 1, fill = 0.85 } = {}) {
+    for (const r of this.standRows) for (const m of r.meshes) m.visible = r.lvl <= stands;
+    const n = Math.round(this.crowdUnlocked[stands] * Math.max(0.05, Math.min(1, fill)));
+    this.crowdCount = n;
+    this.crowd.bodies.count = n;
+    this.crowd.heads.count = n;
+    this.updateCrowd(0, 0, true);
+    const s = [0.7, 1, 1.25, 1.4][scoreboard] || 1;
+    this.scoreboard.scale.set(s, s, 1);
+    this.scoreFrame.scale.set(s, s, 1);
+    this.videoCube.visible = scoreboard >= 2;
   }
 
   // Publikum wippt, bei Aufregung springen die Leute
   updateCrowd(time, excitement, all = false) {
     if (!this.crowd) return;
     const { bodies, heads } = this.crowd;
-    const n = this.crowdData.length;
+    const n = Math.min(this.crowdCount ?? this.crowdData.length, this.crowdData.length);
     const part = all ? 1 : 3;
     this.crowdFrame = (this.crowdFrame + 1) % part;
     for (let i = this.crowdFrame; i < n; i += part) {
@@ -393,6 +424,18 @@ export class Arena {
     const frame = new THREE.Mesh(new THREE.BoxGeometry(8.4, 3.4, 0.3), new THREE.MeshStandardMaterial({ color: 0x111111 }));
     frame.position.set(0, 8.5, -29.95);
     this.group.add(frame);
+    this.scoreboard = sb; this.scoreFrame = frame;
+    // Videowürfel über der Feldmitte (ab Ausbaustufe 2)
+    const screen = new THREE.MeshBasicMaterial({ map: this.boardTex });
+    const dark = new THREE.MeshStandardMaterial({ color: 0x111111 });
+    const cube = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.1, 2.6), [screen, screen, dark, dark, screen, screen]);
+    cube.position.set(0, 11.5, 0);
+    const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 10, 4), dark);
+    rope.position.y = 5.5;
+    cube.add(rope);
+    cube.visible = false;
+    this.group.add(cube);
+    this.videoCube = cube;
     this.setScoreboard('HEIM', 0, 'GAST', 0, '20:00', 1);
     // Lichtbänder an der Decke (nur Optik)
     const lamp = new THREE.MeshBasicMaterial({ color: 0xfff6e0 });

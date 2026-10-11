@@ -17,8 +17,8 @@
 | 1 | Spielbarer Match | abgenommen |
 | 2 | Regeln, Verletzungen, Torjubel | abgenommen |
 | 3 | Eigener Verein | abgenommen |
-| 4 | Ligen und Saison | fertig, wartet auf Abnahme |
-| 5 | Geld, Halle, Transfers | offen |
+| 4 | Ligen und Saison | abgenommen |
+| 5 | Geld, Halle, Transfers | fertig, wartet auf Abnahme |
 | 6 | Speichern mit Code, Ton, Feinschliff | offen |
 
 ## Testen
