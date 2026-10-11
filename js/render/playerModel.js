@@ -10,7 +10,7 @@ import * as THREE from 'three';
 const DOWN = new THREE.Vector3(0, -1, 0);
 const L_UA = 0.27, L_FA = 0.27, L_TH = 0.44, L_SH = 0.44;
 const SHAFT = 1.02;
-export const MODEL_SCALE = 1.12; // Figuren etwas grösser als echt, damit man sie gut sieht
+export const MODEL_SCALE = 1.04; // Figuren etwas grösser als echt, damit man sie gut sieht
 const SKIN = [0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0xffdbac, 0xd9a066];
 const HAIR = [0x2b1b0e, 0x5a3a1a, 0x8b5a2b, 0xd8b26e, 0x111111, 0x6b4423];
 

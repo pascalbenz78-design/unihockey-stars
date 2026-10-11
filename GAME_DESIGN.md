@@ -237,7 +237,7 @@ Konkrete Festlegungen während des Baus (Werte stehen in `js/config.js`).
   der Verteidiger direkt.
 
 ### Grafik
-- Figuren 1.12-mal grösser als echt (besser erkennbar), Ball etwas grösser.
+- Figuren 1.04-mal grösser als echt (auf Wunsch leicht verkleinert) (besser erkennbar), Ball etwas grösser.
 - Spieler auf der Bank stehen bei Mittel/Hoch sichtbar hinter der Bande.
 - Grafik Niedrig: keine Echtzeitschatten (Schattenflecken), weniger Publikum,
   keine Bankspieler, keine Kantenglättung.
