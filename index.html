@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="de-CH">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#11151c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Unihockey Stars</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%AD%90%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud" class="hidden">
+    <div id="scorebug">
+      <span class="team"><i class="swatch" id="hs-sw"></i><b id="hs-name">HEIM</b></span>
+      <span class="score" id="hs-score">0</span>
+      <span class="sep">:</span>
+      <span class="score" id="as-score">0</span>
+      <span class="team"><b id="as-name">GAST</b><i class="swatch" id="as-sw"></i></span>
+      <span class="time"><span id="period">1. Drittel</span><span id="clock">20:00</span></span>
+    </div>
+    <div id="msg"></div>
+    <div id="toast"></div>
+    <div id="lineinfo">
+      <div id="linelabel">Linie 1</div>
+      <div id="stamina"></div>
+      <div id="goalie-ind">Goalie gesteuert</div>
+    </div>
+  </div>
+
+  <div id="touch" class="hidden">
+    <div id="joyzone"><div id="joybase"><div id="joyknob"></div></div></div>
+    <div id="btns-top">
+      <button data-act="switch">Wechsel</button>
+      <button data-act="goalie">Goalie</button>
+      <button data-act="line">Linie</button>
+      <button data-act="pause">II</button>
+    </div>
+    <div id="btns-right">
+      <button class="b-shoot" data-act="shoot">Schuss</button>
+      <button class="b-pass" data-act="pass">Pass</button>
+      <button class="b-bank" data-act="bank">Bande</button>
+      <button class="b-sprint" data-act="sprint">Sprint</button>
+    </div>
+  </div>
+
+  <div id="screen" class="hidden"></div>
+  <div id="rotate"><div>📱↻<p>Bitte das Handy quer halten</p></div></div>
+  <div id="loading">Unihockey Stars wird geladen …</div>
+  <noscript>Für dieses Spiel braucht es JavaScript.</noscript>
+</body>
+</html>

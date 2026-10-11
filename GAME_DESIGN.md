@@ -1,0 +1,244 @@
+# Unihockey Stars – Game Design
+
+Arcade-Unihockeyspiel (Floorball) im Stil von Hockey All Stars, kombiniert mit
+einem Vereinsmanager mit Ligasystem. Sprache im Spiel: Deutsch (Schweizer
+Schreibweise, «ss» statt «ß»). Zielgruppe: Kinder ab ca. 10 Jahren und
+Erwachsene.
+
+Dieses Dokument hält alle Regeln fest und wird während der Entwicklung
+aktuell gehalten. Abschnitt «Entscheide» am Schluss enthält alles, was beim
+Bauen konkret festgelegt wurde.
+
+---
+
+## Technik
+
+- Three.js per Import-Map von einem CDN mit fester Version (`three@0.170.0`,
+  jsDelivr), reines JavaScript mit ES-Modulen, kein Build-Schritt → läuft
+  direkt auf GitHub Pages.
+- Spiellogik und Physik laufen in 2D auf der Feldebene (x = Längsachse,
+  y = Querachse, dazu eine Höhe z nur für den Ball). Three.js zeichnet daraus
+  die 3D-Darstellung. Die Spiellogik kennt weder DOM noch Three.js und lässt
+  sich deshalb auch in Node testen (`tools/simtest.mjs`).
+- Läuft auf dem Handy (Querformat, Touch) und am PC (Tastatur).
+- Grafikqualität Niedrig/Mittel/Hoch in den Einstellungen.
+- Module: `match/`, `ai/`, `render/`, `league/`, `club/`, `economy/`, `ui/`,
+  `save/`. Alle Spielwerte in `js/config.js`.
+
+## Grafik
+
+- Ansicht schräg von oben (leicht 3D), Kamera folgt dem Ball weich.
+- Möglichst realistischer Look: Unihockeyhalle mit Hallenboden, Linien,
+  Banden mit Werbeflächen, Tribünen mit Publikum, Licht und Schatten.
+- Spielerfiguren in 3D mit Animationen (laufen, schiessen, passen, fallen,
+  jubeln). Selbst gebaute Modelle oder freie CC0-Modelle (z. B. Quaternius)
+  als glTF; Lizenz in `CREDITS.md`.
+- Schläger jedes Spielers gut sichtbar (Schaft + Kelle) in der gewählten
+  Farbe.
+- Trikots in Vereinsfarben mit Nummer, Goalie mit Ausrüstung.
+
+## Grundregeln
+
+- Grossfeld 40 × 20 m mit Banden rundherum (Ecken abgerundet), Torraum,
+  Mittelkreis, Tore wie im echten Unihockey.
+- Pro Team 5 Feldspieler + 1 Goalie auf dem Feld.
+- Kader: 3 Linien à 5 Feldspieler + 2 Goalies + 3 Ersatz = 20 Spieler.
+- Spielzeit: 3 Drittel à 20:00 Spielzeit. Ein Drittel dauert real 3 Minuten,
+  ein ganzes Spiel also 9 Minuten. Die Spieluhr zeigt die Unihockey-Zeit
+  (20:00 → 0:00) und läuft entsprechend schneller. Pause zwischen den
+  Dritteln mit Statistik.
+- Unentschieden: Verlängerung 5:00 Spielzeit mit Sudden Death, danach
+  Penaltyschiessen (je 3 Schützen, dann einzeln weiter).
+- Punkte: Sieg 3, Sieg nach Verlängerung/Penalty 2, Niederlage nach
+  Verlängerung/Penalty 1, Niederlage 0.
+- Echte Unihockey-Regeln: kein Bodycheck. Fouls (Stockschlag, hoher Stock,
+  Behinderung, Halten) geben eine 2-Minuten-Strafe (Spielzeit) mit
+  Powerplay/Boxplay. Feldspieler dürfen nicht in den Torraum.
+
+## Steuerung
+
+- Man steuert einen Feldspieler. Mit einer Taste wechselt man zum Spieler,
+  der am nächsten zum Ball ist. Die übrigen Spieler steuert der Computer.
+- Der eigene Goalie kann per Taste übernommen werden. Einstellung «Goalie
+  automatisch übernehmen bei Schuss aufs eigene Tor» (an/aus). Beim
+  Penaltyschiessen steuert man Schütze und Goalie selbst.
+- PC: Pfeiltasten/WASD = laufen, Leertaste = Schuss (halten = aufladen:
+  härter, aber ungenauer), X = Pass, C = Bandenpass, Shift = Sprint (kostet
+  Ausdauer), E = Spieler wechseln, G = Goalie übernehmen, Q = Linienwechsel,
+  P = Pause.
+- Handy: virtueller Joystick links, Tasten Schuss/Pass/Bande/Sprint rechts,
+  Tasten Spieler-Wechsel/Goalie/Linie oben.
+- Direktschuss, wenn der Ball beim Annehmen sofort geschossen wird.
+- 3 Schwierigkeitsstufen (Leicht / Mittel / Schwer): KI-Stärke, Spieltempo
+  und Verletzungshäufigkeit.
+
+---
+
+## Etappe 1 – Spielbarer Match
+
+Halle, Feld mit Banden und Ballphysik (Ball prallt realistisch an der Bande
+ab), 6 gegen 6, Steuerung wie oben, Gegner-KI (Angriff, Verteidigung,
+Positionsspiel), Goalie-KI, Schuss aufladen, Pass, Bandenpass, Spieluhr mit
+3 Dritteln, Spielstand. Linienwechsel: 3 Linien, Ausdauerbalken pro Spieler.
+Müde Spieler werden langsamer und schiessen ungenauer. Die KI wechselt
+selbst, beim eigenen Team per Taste oder «Auto-Wechsel».
+
+## Etappe 2 – Regeln, Verletzungen, Torjubel
+
+- Strafen mit Schiedsrichter-Anzeige, Strafbank, Countdown,
+  Powerplay/Boxplay.
+- Verletzungen durch Zweikämpfe und Müdigkeit. Je müder der Spieler und je
+  härter der Zweikampf, desto höher das Risiko und desto schwerer die
+  Verletzung. Schweregrade: leicht = 1–2 Spiele, mittel = 3–5 Spiele,
+  schwer = 6–10 Spiele Pause. Der Spieler verlässt das Feld, Meldung mit
+  Schweregrad und Ausfalldauer. Verletzte fehlen bis zur Genesung im Kader.
+- Verlängerung und Penaltyschiessen.
+- Nach jedem Tor: kurze Wiederholung (Zeitlupe der letzten 3 Sekunden,
+  andere Kamerawinkel), danach der Jubel des Torschützen.
+- Jubel: mindestens 8 Animationen (z. B. Faust, Knierutscher, Schläger
+  hochhalten, Flieger, Tänzchen, Herz, Sprung, Team-Kreis). Jedem Spieler
+  kann ein eigener Jubel zugeordnet werden.
+
+## Etappe 3 – Eigener Verein
+
+- Vereins-Editor: Vereinsname, Kürzel, Vereinsfarben (Trikot heim/auswärts),
+  Logo-Editor aus Formen (Schild, Kreis, Raute …), Farben, Symbolen (Stern,
+  Blitz, Tier-Silhouetten …) und Initialen. Logo als JSON gespeichert und
+  überall angezeigt (Menü, Tabelle, Mittelkreis, Trikot, Banden).
+- Schläger: Farbe frei wählbar (Schaft und Kelle getrennt), Auslage
+  links/rechts pro Spieler (beeinflusst den Schusswinkel).
+- Spieler: Name, Nummer, Alter, Position (Center, Flügel, Verteidiger,
+  Goalie), Werte Tempo, Schuss, Pass, Ausdauer, Zweikampf, Technik (Goalie:
+  Reflexe, Stellungsspiel), Jubel. Namen und Nummern änderbar.
+- Linien-Aufstellung per Drag & Drop.
+- Training zwischen den Spielen: Schwerpunkt wählen, Spieler verbessern sich
+  langsam. Zu hartes Training erhöht das Verletzungsrisiko.
+
+## Etappe 4 – Ligen und Saison
+
+- 5 Ligen (Liga 1 = oberste bis Liga 5), je 8 Teams = 40 Teams. Die 39
+  Gegner haben erfundene Namen und automatisch erzeugte Logos, keine echten
+  Vereine. Start in Liga 5.
+- Saison: Hin- und Rückrunde = 14 Spiele. Andere Spiele werden anhand der
+  Teamstärke simuliert. Tabelle mit Punkten, Toren, Tordifferenz.
+- Playoffs in allen Ligen: die ersten 4 nach der Qualifikation (Halbfinal
+  1–4 und 2–3, dann Final, je Best-of-3). Heimvorteil für das besser
+  klassierte Team. Liga 1: Sieger = Schweizer Meister; Liga 2–5: Ligameister.
+- Auf-/Abstieg zwischen benachbarten Ligen: Playoff-Sieger der unteren Liga
+  steigt direkt auf, Letzter der Qualifikation der oberen Liga steigt direkt
+  ab. Barrage: Playoff-Finalverlierer unten gegen Zweitletzten oben,
+  Best-of-3, Sieger spielt nächste Saison oben. Liga 1 ohne Aufstieg, Liga 5
+  ohne Abstieg.
+- Ablauf am Saisonende: zuerst Playoffs, danach alle Barragen. Spiele ohne
+  eigene Beteiligung werden simuliert; Übersicht als Turnierbaum.
+- Cup: K.-o.-Turnier mit allen 40 Teams parallel zur Meisterschaft (Teams
+  aus oberen Ligen steigen später ein).
+- Saisonziel vom Vorstand je nach Liga, Bewertung am Saisonende.
+- Saisonende-Bildschirm: Schlusstabellen, Meister aller Ligen,
+  Auf-/Absteiger, Torschützenliste, bester Spieler, dann neue Saison.
+  Spieler altern: junge verbessern sich, ältere werden schwächer oder treten
+  zurück.
+
+## Etappe 5 – Geld, Halle, Transfers
+
+- Einnahmen: Zuschauer (Liga, Erfolg, Hallengrösse), Sponsoren, Cup- und
+  Playoff-Prämien. Ausgaben: Löhne, Ausbau.
+- Halle ausbauen (Tribünen, Anzeigetafel, Garderobe → bessere Regeneration),
+  im Spiel sichtbar.
+- Sponsoren wählen; Logos auf den Banden.
+- Transfermarkt: kaufen/verkaufen, Preise nach Stärke und Alter.
+- Nachwuchs: Junioren liefern jede Saison junge Spieler.
+- Physiotherapeut (ausbaubar): verkürzt Ausfallzeiten.
+
+## Etappe 6 – Speichern mit Code, Ton, Feinschliff
+
+- Automatisch lokal speichern (localStorage) nach jedem Spiel und jeder
+  Änderung.
+- Online-Speichern mit Code wie bei «Netzroller» (Supabase, gleiches Projekt,
+  eigene Tabelle und Funktionen): Code wie `UH-7K2P-QX9M` (ohne 0/O, 1/I),
+  im Menü angezeigt mit «Code kopieren»; auf anderem Gerät «Spielstand
+  laden» → Code einfügen. Tabelle `savegames (code, data jsonb,
+  updated_at)`, RLS aktiv, kein direkter Tabellenzugriff, nur zwei
+  RPC-Funktionen (security definer). Nur Publishable/Anon-Key im Code. Bei
+  zwei Geräten gewinnt der neuere Stand, vorher Warnung. Fallback:
+  Export/Import als JSON-Datei. Netzroller-Ordner nur lesen.
+- Ton mit Web Audio: Schuss, Pfosten, Pfiff, Torsirene, Publikum (lauter bei
+  Chancen und Toren).
+- Menüs: Hauptmenü, Freundschaftsspiel, Karriere, Verein, Liga,
+  Einstellungen (Schwierigkeit, Grafikqualität, Ton, Steuerung,
+  Goalie-Automatik).
+- Kurze Anleitung im Spiel. README.md mit Anleitung für GitHub Pages.
+
+---
+
+## Entscheide
+
+Konkrete Festlegungen während des Baus (Werte stehen in `js/config.js`).
+
+### Feld und Koordinaten
+- Feldmitte = (0, 0). x läuft von −20 bis +20 (Länge), y von −10 bis +10.
+  In Three.js wird (x, y, Höhe) zu (x, Höhe, −y): die Kamera steht auf der
+  Seite y < 0, die Spielerbänke stehen auf der gegenüberliegenden Seite.
+- Bandenecken mit 2.5 m Radius, Bandenhöhe 0.5 m.
+- Torlinie 3.5 m vor der Endbande, Tor 1.60 × 1.15 m, 0.65 m tief.
+- Torraum 4 × 5 m (hinten bündig mit dem Tornetz, 2.85 m vor der Bande),
+  Goalieraum 1 × 2.5 m, Mittelkreis 3 m Radius. Bully-Punkte: Mitte, auf der
+  Mittellinie und auf der verlängerten Torlinie je 1.5 m vor der Längsbande.
+- Feldspieler werden aus dem Torraum hinausgeschoben, der Goalie bleibt im
+  Torraum.
+
+### Ablauf
+- Seitenwechsel nach jedem Drittel.
+- Spieluhr läuft nur im laufenden Spiel (steht bei Tor, Bully, Pause).
+- Ball über die Bande → Bully am nächsten Bully-Punkt.
+- Bully: Ball fällt, Gewinner nach Technik der beiden Center (mit Zufall),
+  der Ball rollt zum Verteidiger des Gewinners.
+- Etappe 1: Unentschieden bleibt Unentschieden (Verlängerung/Penalty folgen
+  in Etappe 2).
+
+### Steuerung im Detail
+- Ballführung: Wer den Ball erobert, steuert der Mensch automatisch (beim
+  eigenen Team). E wechselt zum Mitspieler, der dem Ball am nächsten ist.
+- Schuss: Leertaste halten lädt auf (Balken), Loslassen schiesst. Mit
+  Richtungstaste quer zum Tor zielt man in die entsprechende Torecke.
+- Ohne Ball: Leertaste oder X in Ballnähe = Stockeinsatz (Ball stehlen).
+- Direktschuss: Leertaste kurz vor der Ballannahme drücken → Schuss direkt
+  bei der Annahme, etwas härter.
+- Pass/Bandenpass: geht an den Mitspieler in Laufrichtung (sonst Blickrichtung).
+  Der Bandenpass wird über die nähere Längsbande gespielt.
+- Goalie: G übernimmt bzw. gibt ab. Ohne Eingabe stellt sich der
+  übernommene Goalie selbst richtig hin. Mit Sprint hechtet er (grössere
+  Reichweite). Hält er den Ball, wirft er ihn mit X/Leertaste ab.
+- Linienwechsel (Q): Die neue Linie kommt bei der Spielerbank aufs Feld.
+  Führt ein Spieler der alten Linie gerade den Ball, wird er erst nach der
+  Ballabgabe ersetzt.
+
+### Ausdauer und Wechsel
+- Ausdauer sinkt auf dem Feld (Sprint ×2.6), erholt sich auf der Bank.
+- Müde Spieler: bis 28 % langsamer, Schüsse und Pässe ungenauer.
+- KI und «Auto-Wechsel» wechseln, wenn die Linie im Schnitt unter 45 % fällt
+  und keine Gefahr vor dem eigenen Tor besteht.
+
+### Schwierigkeit
+- Leicht / Mittel / Schwer verändern Geschick der Gegner-KI (Entscheide,
+  Zielgenauigkeit, Zweikampf, Reaktion und Reichweite des Goalies) und das
+  Spieltempo. Die eigenen Mitspieler spielen immer auf mittlerem Niveau.
+- Abstimmung mit einem einfachen Bot («zum Tor laufen und schiessen», je 30
+  Drittel): Leicht ca. 2.7 : 0.9, Mittel 1.6 : 1.4, Schwer 1.3 : 2.1 Tore pro
+  Drittel. KI gegen KI: ca. 5–8 Tore und 35 Schüsse pro Spiel.
+
+### Zweikampf und Ballbesitz
+- Die KI hält den Ball mindestens ~0.7 s, bevor sie passt (ausser unter
+  starkem Druck), damit es Ballbesitz und Spielaufbau gibt.
+- Stockeinsatz der KI: alle ~0.5 s ein Versuch. Von vorne (Verteidiger im
+  Laufweg) 2.4-mal so erfolgreich, von hinten nur 0.6-mal.
+- Der Ballführer kann Verteidiger nicht wegschieben (kein Bodycheck).
+- Nach Ballverlust springt der Ball in 45 % der Fälle frei weg, sonst hat ihn
+  der Verteidiger direkt.
+
+### Grafik
+- Figuren 1.12-mal grösser als echt (besser erkennbar), Ball etwas grösser.
+- Spieler auf der Bank stehen bei Mittel/Hoch sichtbar hinter der Bande.
+- Grafik Niedrig: keine Echtzeitschatten (Schattenflecken), weniger Publikum,
+  keine Bankspieler, keine Kantenglättung.
+- Publikum springt bei Torchancen und Toren.
