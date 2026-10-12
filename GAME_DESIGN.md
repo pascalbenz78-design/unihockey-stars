@@ -513,8 +513,8 @@ Konkrete Festlegungen während des Baus (Werte stehen in `js/config.js`).
   gewechselt.
 - Handy: Joystick fest unten links (verschiebt sich nicht mehr zum Daumen; der
   Daumen kann irgendwo in der linken Zone liegen, die Richtung zählt ab der
-  Joystick-Mitte), «Wechsel» direkt darüber. Rechts unten Pass (Ecke) und
-  links daneben Schuss (beide gleich gross), darüber Bande (am Rand) und Sprint
+  Joystick-Mitte), «Wechsel» direkt darüber. Rechts unten Schuss (Ecke) und
+  links daneben Pass (beide gleich gross), darüber Bande (am Rand, über Schuss) und Sprint (über Pass)
   (Linkshänder gespiegelt). Maus-Modus am PC: Joystick 150 px vom rechten
   Rand und 60 px vom unteren, «Wechsel» links daneben (über der Taste lenkt die
   Maus nicht).
