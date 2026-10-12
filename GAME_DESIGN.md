@@ -479,6 +479,12 @@ Konkrete Festlegungen während des Baus (Werte stehen in `js/config.js`).
   Penaltyschiessen sind die beiden abwechselnd Schütze bzw. Goalie.
 - Markierung: eigener Spieler gelber Ring und Pfeil, Mitspieler blauer Ring,
   der vom anderen Menschen gesteuerte Gegner roter Ring.
+- Verbindung stabiler: Beide Geräte schicken jede Sekunde einen Herzschlag
+  (vorher hielt der Gast eine ruhige Lobby nach 3,5 s für tot und verband sich
+  ständig neu). Neu erst nach 5 s ohne Daten. Staut sich die Leitung, wird kein
+  veralteter Zustand eingereiht, sondern der neueste nachgeschickt. Zurück aus
+  dem Hintergrund wird sofort neu verbunden. Während einer Online-Sitzung
+  bleibt der Bildschirm an (Wake Lock, wo der Browser es kann).
 - Online läuft das Spiel ohne Pause weiter (Menü nur zum Verlassen). Die
   Drittelspause beendet der Gastgeber; der Gast sieht dieselbe Statistik und
   wartet. Ohne Daten seit 2,5 s erscheint ein Hinweis; die Verbindung baut sich
@@ -500,8 +506,12 @@ Konkrete Festlegungen während des Baus (Werte stehen in `js/config.js`).
   wenn der Alte über der Bande ist – nie mehr als 5 Feldspieler. Zur Bank
   laufen sie mit 6 m/s. Bei einem Unterbruch (Bully) wird sofort fertig
   gewechselt.
-- Handy: «Wechsel» unten links direkt beim Joystick (Linkshänder rechts, im
-  Maus-Modus links neben dem Joystick; über der Taste lenkt die Maus nicht).
+- Handy: Joystick fest unten links (verschiebt sich nicht mehr zum Daumen; der
+  Daumen kann irgendwo in der linken Zone liegen, die Richtung zählt ab der
+  Joystick-Mitte). Schuss-Taste etwas kleiner, «Wechsel» unten rechts in der
+  Ecke (Linkshänder gespiegelt). Maus-Modus am PC: Joystick 150 px vom rechten
+  Rand und 60 px vom unteren, «Wechsel» links daneben (über der Taste lenkt die
+  Maus nicht).
   Oben neu eine Vollbild-Taste (⛶), wo der Browser Vollbild kann (iPhone-Safari
   nicht; dort «Zum Home-Bildschirm»).
 

@@ -5,10 +5,14 @@
 // Jedes Gerät veröffentlicht ein «Präsenz»-Objekt; das andere liest es. Alles ist absoluter Zustand.
 //
 // Wiederverbinden (PeerJS): Hört der Gast länger als STALE_MS nichts mehr, baut er die Verbindung neu
-// auf. Der Gastgeber nimmt eine neue Verbindung jederzeit an und ersetzt die alte.
+// auf. Der Gastgeber nimmt eine neue Verbindung jederzeit an und ersetzt die alte. Damit auch in ruhigen
+// Momenten (Lobby) Daten fliessen, schicken beide jede Sekunde einen Herzschlag (siehe online.js).
+// Staut sich die Leitung (schlechtes Handynetz), wird ein veralteter Zustand nicht in die Warteschlange
+// gestellt, sondern kurz gewartet und dann der neueste geschickt.
 
 const PEERJS_URL = 'https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js';
-const STALE_MS = 3500, RETRY_MS = 3000, HOST_ID_RETRIES = 6;
+const STALE_MS = 5000, RETRY_MS = 3000, HOST_ID_RETRIES = 6;
+const MAX_BUFFER = 32 * 1024;   // Bytes, die noch nicht gesendet sind
 const STUN = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
@@ -64,7 +68,13 @@ function makeP2P() {
         if (emitT) return;
         emitT = setTimeout(() => { emitT = 0; const peers = snapshot(); listeners.forEach(fn => { try { fn({ peers }); } catch (e) { console.error(e); } }); }, 0);
       };
-      const flush = () => { sendT = 0; if (conn && conn.open && !dropping()) { try { conn.send(mine); } catch (e) { /* nächstes Mal */ } } };
+      const flush = () => {
+        sendT = 0;
+        if (!conn || !conn.open || dropping()) return;
+        const dc = conn.dataChannel;
+        if (dc && dc.bufferedAmount > MAX_BUFFER) { sendT = setTimeout(flush, 60); return; }   // Stau: später den neuesten Stand
+        try { conn.send(mine); } catch (e) { /* nächstes Mal */ }
+      };
       const attach = c => {
         const old = conn;
         conn = c;
@@ -114,6 +124,13 @@ function makeP2P() {
         });
       }
       peer.on('disconnected', () => { if (!closed) setTimeout(reconnectBroker, 1000); });
+      // Zurück aus dem Hintergrund (Handy entsperrt, App gewechselt): sofort prüfen statt warten
+      const onVisible = () => {
+        if (document.hidden || closed) return;
+        reconnectBroker();
+        if (!asHost && (!conn || !conn.open || performance.now() - lastData > 1500)) connectToHost();
+      };
+      document.addEventListener('visibilitychange', onVisible);
 
       // Wächter: hört der Gast zu lange nichts, verbindet er sich neu
       const watch = setInterval(() => {
@@ -137,6 +154,7 @@ function makeP2P() {
         onPeers(fn) { listeners.add(fn); setTimeout(() => fn({ peers: snapshot() }), 0); return () => listeners.delete(fn); },
         async leave() {
           closed = true; clearTimeout(retryT); clearInterval(watch); listeners.clear();
+          document.removeEventListener('visibilitychange', onVisible);
           try { if (conn) conn.close(); } catch (e) { /* egal */ }
           try { peer.destroy(); } catch (e) { /* egal */ }
         },

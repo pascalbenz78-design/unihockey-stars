@@ -87,12 +87,14 @@ export class Input {
       this.joy.x = dx * k / R; this.joy.y = -dy * k / R;
       knob.style.transform = `translate(${dx * k}px, ${dy * k}px)`;
     };
+    // Joystick steht fest; Daumen irgendwo in der linken Zone: Richtung von der Joystick-Mitte aus
     joyZone.addEventListener('pointerdown', e => {
       if (this.joy.id != null) return;
-      this.joy.id = e.pointerId; this.joy.ox = e.clientX; this.joy.oy = e.clientY;
-      base.style.left = `${e.clientX}px`; base.style.top = `${e.clientY}px`;
+      const r = base.getBoundingClientRect();
+      this.joy.id = e.pointerId; this.joy.ox = r.left + r.width / 2; this.joy.oy = r.top + r.height / 2;
       base.classList.add('active');
-      joyZone.setPointerCapture(e.pointerId);
+      move(e);
+      try { joyZone.setPointerCapture(e.pointerId); } catch { /* egal */ }
       e.preventDefault();
     });
     joyZone.addEventListener('pointermove', e => { if (e.pointerId === this.joy.id) move(e); });

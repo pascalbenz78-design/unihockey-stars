@@ -127,7 +127,7 @@ export class Menus {
             <tr><td><kbd>P</kbd></td><td>Pause</td></tr>
           </table>
           <h3>Handy</h3>
-          <p>Links Joystick (Daumen irgendwo hinlegen), unten links «Wechsel» (anderen Spieler wählen), rechts Schuss, Pass, Bande, Sprint. Oben Goalie, Linie, Vollbild, Pause.</p>
+          <p>Links der Joystick, rechts Schuss, Pass, Bande, Sprint und unten rechts «Wechsel» (anderen Spieler wählen). Oben Goalie, Linie, Vollbild, Pause.</p>
         </div>
         <div>
           <h3>Tipps</h3>

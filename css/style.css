@@ -80,8 +80,8 @@ button { font: inherit; color: inherit; }
 #touch { position: fixed; inset: 0; z-index: 6; pointer-events: none; }
 #joyzone { position: absolute; left: 0; top: 18%; bottom: 0; width: 45%; pointer-events: auto; touch-action: none; }
 #joybase {
-  position: fixed; left: 110px; top: 70%; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08); border: 2px solid rgba(255, 255, 255, 0.25); opacity: 0.55;
+  position: fixed; left: calc(max(14px, env(safe-area-inset-left)) + 84px); top: auto; bottom: 34px; margin: 0 0 0 -60px; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08); border: 2px solid rgba(255, 255, 255, 0.25); opacity: 0.75;
 }
 #joybase.active { opacity: 1; }
 #joyknob {
@@ -94,13 +94,13 @@ button { font: inherit; color: inherit; }
 }
 #touch button.down { background: rgba(255, 207, 46, 0.65); color: #111; }
 #btns-right {
-  position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: 16px; width: 230px; height: 200px;
+  position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: 16px; width: 230px; height: 210px;
 }
 #btns-right button { position: absolute; font-size: 14px; }
-.b-shoot { width: 92px; height: 92px; right: 0; bottom: 34px; background: rgba(232, 51, 42, 0.6) !important; font-size: 16px !important; }
-.b-pass { width: 70px; height: 70px; right: 104px; bottom: 6px; }
-.b-bank { width: 62px; height: 62px; right: 98px; bottom: 92px; }
-.b-sprint { width: 62px; height: 62px; right: 14px; bottom: 136px; }
+.b-shoot { width: 76px; height: 76px; right: 0; bottom: 52px; background: rgba(232, 51, 42, 0.6) !important; font-size: 16px !important; }
+.b-pass { width: 66px; height: 66px; right: 90px; bottom: 0; }
+.b-bank { width: 60px; height: 60px; right: 92px; bottom: 80px; }
+.b-sprint { width: 58px; height: 58px; right: 9px; bottom: 140px; }
 #btns-top {
   position: absolute; top: max(8px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right));
   display: flex; gap: 6px;
@@ -407,12 +407,12 @@ body.ts-gross #joybase { transform: scale(1.2); }
 body.lefty #joyzone { left: auto; right: 0; }
 body.lefty #btns-right { right: auto; left: max(14px, env(safe-area-inset-left)); transform-origin: bottom left; }
 body.lefty .b-shoot { right: auto; left: 0; }
-body.lefty .b-pass { right: auto; left: 104px; }
-body.lefty .b-bank { right: auto; left: 98px; }
-body.lefty .b-sprint { right: auto; left: 14px; }
+body.lefty .b-pass { right: auto; left: 90px; }
+body.lefty .b-bank { right: auto; left: 92px; }
+body.lefty .b-sprint { right: auto; left: 9px; }
 body.lefty.touch #lineinfo { left: auto; right: max(10px, env(safe-area-inset-right)); top: 54px; }
 body.lefty #btns-top { right: auto; left: max(10px, env(safe-area-inset-left)); }
-body.lefty #joybase { left: calc(100% - 110px); }
+body.lefty #joybase { left: calc(100% - max(14px, env(safe-area-inset-right)) - 84px); }
 /* Bestätigungsdialog */
 .dialog-wrap { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 16px; background: rgba(5, 8, 12, 0.6); }
 .dialog { width: min(420px, 100%); padding: 18px 20px; border-radius: 14px; background: #1c2532; border: 1px solid var(--line); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); }
@@ -424,7 +424,7 @@ body.lefty #joybase { left: calc(100% - 110px); }
 body.mouse-move #btns-right, body.mouse-move #btns-top { display: none; }
 body.mouse-move #joyzone { pointer-events: none; width: 0; height: 0; }
 body.mouse-move #joybase {
-  left: auto; top: auto; right: max(24px, env(safe-area-inset-right)); bottom: 24px; margin: 0;
+  left: auto; top: auto; right: max(150px, env(safe-area-inset-right)); bottom: 60px; margin: 0;
   width: 170px; height: 170px; opacity: 0.9; background: rgba(255, 255, 255, 0.07);
   box-shadow: inset 0 0 0 26px rgba(255, 255, 255, 0.03);
 }
@@ -433,7 +433,7 @@ body.mouse-move #joybase::after {
   border-radius: 50%; border: 1px dashed rgba(255, 255, 255, 0.35);   /* tote Zone = stehen bleiben */
 }
 body.mouse-move #joyknob { transition: transform 0.04s linear; }
-body.mouse-move.lefty #joybase { left: auto; right: max(24px, env(safe-area-inset-right)); }
+body.mouse-move.lefty #joybase { left: auto; right: max(150px, env(safe-area-inset-right)); }
 
 /* Zu zweit online */
 .join-row input { text-transform: uppercase; letter-spacing: 3px; font-weight: 800; text-align: center; }
@@ -452,9 +452,9 @@ body.mouse-move.lefty #joybase { left: auto; right: max(24px, env(safe-area-inse
 
 /* Wechsel-Taste unten beim Joystick (Handy links, Linkshänder rechts, Maus links neben dem Joystick) */
 #touch .b-switch {
-  position: absolute; left: max(14px, env(safe-area-inset-left)); bottom: 14px; width: 74px; height: 46px;
+  position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: 10px; width: 76px; height: 40px;
   border-radius: 23px; font-size: 13px; z-index: 1;
 }
-body.lefty #touch .b-switch { left: auto; right: max(14px, env(safe-area-inset-right)); }
-body.mouse-move #touch .b-switch { left: auto; right: calc(max(24px, env(safe-area-inset-right)) + 186px); bottom: 86px; }
+body.lefty #touch .b-switch { right: auto; left: max(14px, env(safe-area-inset-left)); }
+body.mouse-move #touch .b-switch, body.mouse-move.lefty #touch .b-switch { left: auto; right: calc(max(150px, env(safe-area-inset-right)) + 186px); bottom: 125px; width: 74px; height: 44px; }
 #btns-top [data-act="fullscreen"] { font-size: 16px !important; padding: 4px 10px !important; }

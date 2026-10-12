@@ -41,6 +41,10 @@ export class OnlineSession {
     this.code = role === 'host' ? makeCode() : code;
     this.conn = await room.join('uhs-' + this.code, role === 'host');
     this.unsub = this.conn.onPeers(ch => this.onPeers(ch.peers));
+    // Herzschlag: hält die Verbindung auch in ruhigen Momenten (Lobby, Pausen) als lebendig erkennbar
+    let hb = 0;
+    this.every(1000, () => this.set({ hb: (hb = (hb + 1) % 1000) }));
+    this.keepAwake();
     this.set({ app: APP, role, name: this.app.club.name.slice(0, 40), ph: 'lobby' });
     if (role === 'guest') this.sendClub();
     else this.publishLobby();
@@ -273,7 +277,25 @@ export class OnlineSession {
     return false;
   }
 
+  // Bildschirm nicht abschalten lassen, solange zu zweit gespielt wird (sonst reisst die Verbindung ab)
+  async keepAwake() {
+    if (!('wakeLock' in navigator)) return;
+    const get = async () => {
+      if (!this.conn || document.hidden || this.wake) return;
+      try {
+        this.wake = await navigator.wakeLock.request('screen');
+        this.wake.addEventListener('release', () => { this.wake = null; });
+      } catch (e) { /* nicht erlaubt */ }
+    };
+    this.onVis = () => get();
+    document.addEventListener('visibilitychange', this.onVis);
+    get();
+  }
+
   async leave() {
+    if (this.onVis) document.removeEventListener('visibilitychange', this.onVis);
+    if (this.wake) try { this.wake.release(); } catch (e) { /* egal */ }
+    this.wake = null;
     for (const t of this.timers) clearInterval(t);
     this.timers = [];
     if (this.unsub) try { this.unsub(); } catch (e) { /* egal */ }
