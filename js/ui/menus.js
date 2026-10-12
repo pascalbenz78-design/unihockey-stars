@@ -119,7 +119,7 @@ export class Menus {
             <tr><td><kbd>Alt</kbd> (oder <kbd>X</kbd>)</td><td>Pass (in Laufrichtung)</td></tr>
             <tr><td><kbd>C</kbd></td><td>Bandenpass</td></tr>
             <tr><td><kbd>Shift</kbd></td><td>Sprint (kostet Ausdauer) · Goalie: Hechtsprung</td></tr>
-            <tr><td><kbd>E</kbd></td><td>zum Spieler am nächsten beim Ball wechseln</td></tr>
+            <tr><td><kbd>Y</kbd></td><td>zum Spieler am nächsten beim Ball wechseln</td></tr>
             <tr><td><kbd>G</kbd></td><td>Goalie übernehmen / abgeben</td></tr>
             <tr><td><kbd>Q</kbd></td><td>Linienwechsel</td></tr>
             <tr><td><kbd>P</kbd></td><td>Pause</td></tr>

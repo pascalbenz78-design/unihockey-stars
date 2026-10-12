@@ -6,7 +6,7 @@
 const KEYMAP = {
   // Pass: Alt (links oder rechts/AltGr); X bleibt als Ersatz, falls Alt im Browser nicht ankommt
   Space: 'shoot', AltLeft: 'pass', AltRight: 'pass', KeyX: 'pass', KeyC: 'bank', ShiftLeft: 'sprint', ShiftRight: 'sprint',
-  KeyE: 'switch', KeyG: 'goalie', KeyQ: 'line', KeyP: 'pause', Escape: 'pause',
+  LetterY: 'switch', KeyG: 'goalie', KeyQ: 'line', KeyP: 'pause', Escape: 'pause',
 };
 const MOVE = {
   KeyW: [0, 1], ArrowUp: [0, 1], KeyS: [0, -1], ArrowDown: [0, -1],
@@ -30,7 +30,9 @@ export class Input {
   onKey(e, down) {
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
     // Manche Umgebungen melden Alt nur über den Tastennamen
-    const code = e.code || (e.key === 'Alt' ? 'AltLeft' : e.key === 'AltGraph' ? 'AltRight' : '');
+    // Spielerwechsel über den aufgedruckten Buchstaben Y (QWERTZ und QWERTY liegen dort verschieden)
+    const code = (e.key === 'y' || e.key === 'Y') ? 'LetterY'
+      : e.code || (e.key === 'Alt' ? 'AltLeft' : e.key === 'AltGraph' ? 'AltRight' : '');
     const act = KEYMAP[code];
     if (act || MOVE[code]) e.preventDefault();   // verhindert u. a., dass Alt die Menüleiste öffnet
     if (down) {

@@ -16,7 +16,7 @@ Halle, Transfers und Nachwuchs. Läuft am PC (Tastatur) und auf dem Handy
 | Alt (oder X) | Pass |
 | C | Bandenpass |
 | Shift | Sprint · als Goalie: Hechtsprung |
-| E | Spieler wechseln |
+| Y | Spieler wechseln |
 | G | Goalie übernehmen |
 | Q | Linienwechsel |
 | P / Esc | Pause |

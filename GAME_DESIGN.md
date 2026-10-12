@@ -64,7 +64,7 @@ Bauen konkret festgelegt wurde.
   Penaltyschiessen steuert man Schütze und Goalie selbst.
 - PC: Pfeiltasten/WASD = laufen, Leertaste = Schuss (halten = aufladen:
   härter, aber ungenauer), X = Pass, C = Bandenpass, Shift = Sprint (kostet
-  Ausdauer), E = Spieler wechseln, G = Goalie übernehmen, Q = Linienwechsel,
+  Ausdauer), Y = Spieler wechseln (ursprünglich E), G = Goalie übernehmen, Q = Linienwechsel,
   P = Pause.
 - Handy: virtueller Joystick links, Tasten Schuss/Pass/Bande/Sprint rechts,
   Tasten Spieler-Wechsel/Goalie/Linie oben.
@@ -452,3 +452,5 @@ Konkrete Festlegungen während des Baus (Werte stehen in `js/config.js`).
   Tastatur-Bewegung funktioniert im Maus-Modus weiterhin.
 - Pass neu mit Alt (links und rechts/AltGr), X bleibt als Ersatz. Alt wird im
   Spiel abgefangen, damit der Browser nicht die Menüleiste öffnet.
+- Spielerwechsel neu mit Y statt E (erkannt über den aufgedruckten Buchstaben,
+  damit es auf QWERTZ- und QWERTY-Tastaturen gleich funktioniert).
