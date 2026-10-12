@@ -40,6 +40,7 @@ export class Menus {
       </button>
       <div class="menu-col">
         <button class="primary big" data-act="friendly">Freundschaftsspiel</button>
+        <button class="big" data-act="online">Zu zweit online</button>
         <button class="big" data-act="career">Karriere${this.app.career ? ' <small>(weiter)</small>' : ''}</button>
         <button data-act="saveScreen">Spielstand${this.app.sync && this.app.sync.code ? ` <small>(${this.app.sync.code})</small>` : ''}</button>
         <button data-act="settings">Einstellungen</button>
@@ -135,7 +136,8 @@ export class Menus {
             <li>Mit Richtung nach oben/unten beim Schuss zielst du in die obere bzw. untere Torecke.</li>
             <li>Müde Spieler sind langsamer und schiessen ungenauer – rechtzeitig wechseln!</li>
             <li><b>Auslage:</b> Schüsse auf die Seite, auf der die Kelle ist (Rückhand), sind ungenauer.</li>
-            <li><b>Karriere:</b> 5 Ligen, Cup, Playoffs, Auf-/Abstieg. Geld für Halle, Sponsoren, Transfers und Nachwuchs.</li>
+            <li><b>Karriere:</b> 5 Ligen, Cup, Playoffs, Auf-/Abstieg. Geld für Halle, Sponsoren (Verträge für 1–3 Saisons), Transfers und Nachwuchs.</li>
+            <li><b>Zu zweit online:</b> Eine Person eröffnet und schickt den Code (oder den Link), die andere tritt bei. Gegeneinander oder miteinander gegen den Computer. Online läuft das Spiel ohne Pause.</li>
             <li><b>Spielstand:</b> wird automatisch gespeichert. Unter «Spielstand» kannst du auf einem anderen Gerät weiterspielen: auf der Webseite mit einem Code (UH-XXXX-XXXX), als claude.ai-Artifact automatisch über dein Claude-Konto.</li>
             <li><b>Mein Verein:</b> Name, Trikots, Logo, Spieler (Aussehen, Schläger, Jubel), Aufstellung und Training. Der ★ Lieblingsspieler bekommt einen goldenen Schläger.</li>
           </ul>
@@ -162,7 +164,21 @@ export class Menus {
       </div>`);
   }
 
-  intermission(match) {
+  // Online: Menü während des Spiels (das Spiel läuft weiter)
+  onlinePause() {
+    this.screen = 'onlinePause';
+    this.show(`
+      <h2>Menü</h2>
+      <p class="hint">Online läuft das Spiel weiter.</p>
+      <div class="menu-col">
+        <button class="primary big" data-act="onResume">Zurück ins Spiel</button>
+        ${this.app.online && this.app.online.role === 'host' ? '<button data-act="onLobby">Abbrechen, zurück in die Lobby</button>' : ''}
+        <button data-act="onLeave">Spiel verlassen</button>
+      </div>`);
+  }
+
+  // waiting: Gast beim Online-Spiel (der Gastgeber pfeift weiter)
+  intermission(match, waiting = false) {
     this.screen = 'intermission';
     const title = match.next === 'ot' ? 'Unentschieden – Verlängerung' : match.next === 'shootout' ? 'Penaltyschiessen' : 'Drittelspause';
     const sub = match.next === 'ot' ? '5:00 Sudden Death: Das nächste Tor entscheidet.'
@@ -175,10 +191,11 @@ export class Menus {
       ${this.scoreLine(match)}
       ${this.statsTable(match)}
       ${this.goalList(match)}
-      <div class="menu-row"><button class="primary big" data-act="nextPeriod">${btn}</button></div>`, 'wide');
+      <div class="menu-row">${waiting ? '<p class="hint">Warte, bis der Gastgeber weiterspielt …</p>' : `<button class="primary big" data-act="nextPeriod">${btn}</button>`}</div>`, 'wide');
   }
 
-  end(match, healed = [], extra = '', career = false) {
+  // online: 'host' oder 'guest' beim Spiel zu zweit
+  end(match, healed = [], extra = '', career = false, online = null) {
     this.screen = 'end';
     const h = match.human ? match.human.team : null;
     let title = 'Schlussresultat';
@@ -196,7 +213,9 @@ export class Menus {
       ${this.goalList(match)}
       ${this.summary(match, healed)}
       ${extra}
-      <div class="menu-row">${career ? '<button class="primary big" data-act="careerNext">Weiter</button>' : `
+      <div class="menu-row">${career ? '<button class="primary big" data-act="careerNext">Weiter</button>' : online ? `
+        <button data-act="onLeave">Verlassen</button>
+        ${online === 'host' ? '<button class="primary big" data-act="onLobby">Zurück in die Lobby</button>' : '<span class="hint">Der Gastgeber kann ein neues Spiel starten.</span>'}` : `
         <button data-act="main">Hauptmenü</button>
         <button class="primary big" data-act="start">Revanche</button>`}
       </div>`, 'wide');
@@ -280,7 +299,7 @@ export class Menus {
       case 'resume': app.resume(); break;
       case 'quit': app.toMenu(); break;
       case 'nextPeriod': app.nextPeriod(); break;
-      default: if (!app.careerUI.onAction(act, val) && !app.sync.onAction(act, val)) app.clubEditor.onAction(act, val); break;
+      default: if (!app.onlineUI.onAction(act, val) && !app.careerUI.onAction(act, val) && !app.sync.onAction(act, val)) app.clubEditor.onAction(act, val); break;
     }
   }
 }

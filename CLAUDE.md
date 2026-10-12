@@ -31,6 +31,11 @@
     Mensch-Bot gegen KI (Schwierigkeits-Abstimmung)
   - `node tools/actiontest.mjs` – alle Tasten-Aktionen, Strafe, Verletzung
   - `node tools/careertest.mjs [Saisons]` – ganze Karriere-Saisons (Ligen, Cup, Playoffs, Barrage, Auf-/Abstieg)
+  - `node tools/sponsortest.mjs` – Sponsorenverträge 1–3 Saisons
+  - `node tools/multitest.mjs [Spiele]` – zwei Menschen (gegeneinander / zusammen, Penaltys)
+  - `node tools/synctest.mjs` – Online-Schnappschüsse (Grösse, Positionen, Tore, Eingabe-Zähler)
+- Zu zweit online: Tab A `localhost:8766` → «Spiel eröffnen», Tab B `127.0.0.1:8766/?zu-zweit=CODE`.
+  Verdeckte Tabs bekommen keine Animationsbilder: beide mit `__uh.run(0.1, 30)` in Schleifen antreiben.
 - Im Browser (Konsole): `__uh.run(sek, fps, eingabe)` spielt Bilder manuell ab
   (der eingebaute Browser liefert verdeckt keine Animationsbilder),
   `__uh.sim(sek)` rechnet nur die Logik, `__uh.match` ist das laufende Spiel,
@@ -50,7 +55,7 @@
   (privat, Teilen über das Share-Menü auf claude.ai).
 - Aktualisieren: `node tools/artifact-entry.mjs <scratchpad>/unihockey-stars.html`, dann mit dem
   Artifact-Tool `url` + `file_path` dieser Datei + `root` = Repo + alle Dateien aus `css/` und `js/`
-  als `files` veröffentlichen (Capabilities bleiben: db, user, downloads).
+  als `files` veröffentlichen (Capabilities: db, user, downloads, room – room für «Zu zweit online»).
 - Im Artifact sind fremde Server (Supabase), `confirm()` und direkte Downloads gesperrt:
   Spielstand dort im Claude-Konto (`js/save/cloud.js`, db unter `data/users/<id>/`, gzip und
   in Teile à 180'000 Zeichen), Bestätigungen über `js/ui/dialog.js`, Export über die

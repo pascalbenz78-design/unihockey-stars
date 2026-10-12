@@ -374,6 +374,11 @@ table.fin th { padding-top: 8px; }
 .sp-logo { display: block; padding: 8px; border-radius: 6px; font-weight: 900; text-align: center; letter-spacing: 0.5px; }
 .sponsor em { font-style: normal; font-size: 12px; color: var(--muted); }
 .sponsor.sel em { color: var(--ok); }
+div.sponsor { background: #1a212c; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.sp-years { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.panel .sp-years button { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 2px; font-size: 13px; }
+.panel .sp-years button span { font-weight: 700; }
+.panel .sp-years button small { font-size: 10px; color: var(--muted); }
 table.market td { vertical-align: middle; }
 table.market button { padding: 5px 10px; }
 .tabs.sub { border-bottom: none; padding-bottom: 0; margin-top: 0; }
@@ -429,3 +434,18 @@ body.mouse-move #joybase::after {
 }
 body.mouse-move #joyknob { transition: transform 0.04s linear; }
 body.mouse-move.lefty #joybase { left: auto; right: max(24px, env(safe-area-inset-right)); }
+
+/* Zu zweit online */
+.join-row input { text-transform: uppercase; letter-spacing: 3px; font-weight: 800; text-align: center; }
+.panel .err { color: #ff8a80; font-weight: 600; }
+.code-box { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 6px 0 4px; }
+.code-box span { color: var(--muted); font-weight: 600; }
+.code-box b { font-size: 30px; letter-spacing: 6px; color: var(--accent); font-family: ui-monospace, Consolas, monospace; }
+.lob-status { margin: 4px 0 10px; font-weight: 650; }
+.lob-status .ok { color: var(--ok); }
+.lob-status .wait { color: #ffc93c; }
+.lob-info { background: #1a212c; border: 1px solid var(--line); border-radius: 8px; padding: 4px 12px; }
+#netinfo {
+  position: absolute; left: 50%; top: 64px; transform: translateX(-50%); padding: 8px 16px; border-radius: 8px;
+  background: rgba(180, 40, 30, 0.9); color: #fff; font-weight: 700; font-size: 14px; white-space: nowrap; pointer-events: none;
+}

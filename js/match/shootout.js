@@ -61,11 +61,16 @@ export class Shootout {
     this.timer = S.readyTime;
     this.released = -1;
     this.plan = null;
-    const h = m.human;
-    if (h) {
-      if (st === h.team) { h.controlled = shooter; h.goalieMode = false; }
-      else { h.controlled = g; h.goalieMode = true; }
-      h.pressed = {};
+    // Menschen: Schütze bzw. Goalie; zu zweit im selben Team abwechselnd
+    const turn = Math.floor(this.n / 2);
+    for (const side of [true, false]) {
+      const hs = m.humans.filter(h => (h.team === st) === side);
+      hs.forEach((h, i) => {
+        h.controlled = side ? shooter : g;
+        h.goalieMode = !side;
+        h.benched = i !== turn % hs.length;
+        h.pressed = {};
+      });
     }
     m.emit({ type: 'shootoutAttempt', team: st, shooter, round: Math.floor(this.n / 2) + 1 });
   }

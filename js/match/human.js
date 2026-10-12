@@ -8,9 +8,11 @@ import { predictGoalLine } from './ball.js';
 const SH = CONFIG.shot;
 
 export class HumanController {
-  constructor(match, team) {
+  constructor(match, team, slot = 0) {
     this.match = match;
     this.team = team;
+    this.slot = slot;            // Reihenfolge, wenn zwei Menschen im selben Team spielen
+    this.benched = false;        // Penaltyschiessen zu zweit: der andere ist dran
     this.controlled = team.onField.C;
     this.goalieMode = false;     // Goalie selbst übernommen (Taste G)
     this.autoGoalie = false;     // durch «Goalie automatisch übernehmen»
@@ -29,7 +31,17 @@ export class HumanController {
 
   consume(k) { const v = !!this.pressed[k]; this.pressed[k] = false; return v; }
 
-  active(p) { return p === this.controlled; }
+  active(p) { return !this.benched && p === this.controlled; }
+
+  // Zu zweit im selben Team: Mitspieler am anderen Gerät
+  partners() { return this.match.humans.filter(h => h !== this && h.team === this.team); }
+  takenByPartner(p) { return this.partners().some(h => h.controlled === p && !h.benched); }
+
+  // Bullyspieler, bei zwei Menschen im Team bekommt der zweite den nächsten Mitspieler
+  pickForFaceoff() {
+    const t = this.match.faceoffTaker(this.team);
+    this.controlled = t && !this.takenByPartner(t) ? t : this.fallback();
+  }
 
   // Tasten, die auch während des Bullys gelten
   handleMeta() {
@@ -39,7 +51,9 @@ export class HumanController {
       m.requestLineChange(this.team);
       if (m.state === 'faceoff') {
         m.processLineChanges(this.team, true);
-        this.controlled = m.faceoffTaker(this.team) || this.fallback();
+        const hs = [this, ...this.partners()].sort((a, b) => a.slot - b.slot);
+        for (const h of hs) h.benched = true;
+        for (const h of hs) { h.benched = false; h.pickForFaceoff(); }
       }
     }
     if (this.consume('goalie')) this.toggleGoalie();
@@ -48,10 +62,14 @@ export class HumanController {
   }
 
   // Ersatz, falls kein Feldspieler verfügbar ist (Penaltyschiessen)
-  fallback() { return this.nearestSkater() || this.team.onField.G || this.controlled; }
+  fallback() {
+    const g = this.team.onField.G;
+    return this.nearestSkater() || (g && !this.takenByPartner(g) ? g : null) || this.controlled;
+  }
 
   toggleGoalie() {
     if (this.match.shootout || !this.team.onField.G) return;
+    if (!this.controlled.isGoalie && this.takenByPartner(this.team.onField.G)) return;
     if (this.controlled.isGoalie) {
       this.goalieMode = false; this.autoGoalie = false;
       this.controlled = this.fallback();
@@ -65,7 +83,7 @@ export class HumanController {
     const b = this.match.ball;
     let best = null, bd = Infinity;
     for (const p of this.team.skaters) {
-      if (p === exclude) continue;
+      if (p === exclude || this.takenByPartner(p)) continue;
       const d = Math.hypot(p.x - b.x, p.y - b.y);
       if (d < bd) { bd = d; best = p; }
     }
@@ -85,7 +103,8 @@ export class HumanController {
 
   onFaceoff() {
     this.goalieMode = false; this.autoGoalie = false;
-    this.controlled = this.match.faceoffTaker(this.team) || this.fallback();
+    this.benched = false;
+    this.pickForFaceoff();
     this.pressed = {};
   }
 
@@ -106,6 +125,7 @@ export class HumanController {
       return;
     }
     if (this.controlled.isGoalie && this.goalieMode && !this.autoGoalie) return;
+    if (!this.shouldTake(p)) return;
     this.goalieMode = false; this.autoGoalie = false;
     this.controlled = p;
     // Direktschuss vorgemerkt?
@@ -115,12 +135,29 @@ export class HumanController {
     }
   }
 
+  // Zu zweit im selben Team: Wer übernimmt den Ballführer? Der Passgeber, sonst der Nähere.
+  shouldTake(p) {
+    const ps = this.partners();
+    if (!ps.length) return true;
+    if (ps.some(h => h.controlled === p)) return false;
+    const tc = this.match.touches;
+    const prev = tc.length > 1 ? tc[tc.length - 2].p : null;
+    if (prev && prev.team === this.team) {
+      if (prev === this.controlled) return true;
+      if (ps.some(h => h.controlled === prev)) return false;
+    }
+    const dist = h => (h.controlled.isGoalie && h.goalieMode ? Infinity : Math.hypot(h.controlled.x - p.x, h.controlled.y - p.y));
+    const mine = dist(this);
+    return ps.every(h => mine < dist(h) || (mine === dist(h) && this.slot < h.slot));
+  }
+
   onSubstituted(oldP, newP) {
     if (this.controlled === oldP) this.controlled = newP;
   }
 
   preTick(dt) {
     const m = this.match, b = m.ball, inp = this.input;
+    if (this.benched) { this.pressed = {}; return; }
     if (!this.controlled.onField) this.controlled = this.fallback();
     if (!m.shootout) this.handleMetaInPlay();
     else { this.pressed.line = this.pressed.goalie = this.pressed.switch = false; }
@@ -132,7 +169,7 @@ export class HumanController {
         const pr = predictGoalLine(b, this.team.side);
         return pr && Math.abs(pr.y) < GOAL_HALF_W + 0.5 && pr.t < 1.2;
       })();
-      if (threat && !this.controlled.isGoalie) {
+      if (threat && !this.controlled.isGoalie && !this.takenByPartner(g)) {
         this.autoGoalie = true; this.controlled = g; this.idle = 0;
       } else if (this.autoGoalie && !threat && b.owner !== g && (b.owner || b.speed < 4 || b.vx * this.team.side < 0)) {
         this.autoGoalie = false; this.controlled = this.fallback();
@@ -199,6 +236,7 @@ export class HumanController {
   // beim Goalie ohne Eingabe und beim Annehmen eines Passes helfen)
   postAI() {
     const m = this.match, b = m.ball, inp = this.input;
+    if (this.benched) return;
     const p = this.controlled;
     if (p.isGoalie) {
       if (!this.goalieAssist) { p.ctrl.mx = inp.mx; p.ctrl.my = inp.my; p.ctrl.sprint = false; }

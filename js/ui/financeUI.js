@@ -2,7 +2,7 @@
 // Transfermarkt (kaufen/verkaufen) und Nachwuchs.
 
 import {
-  FACILITIES, CAPACITY, chf, wageOf, valueOf, wageBill, sponsorSlots, build, toggleSponsor, marketEntries,
+  FACILITIES, CAPACITY, chf, wageOf, valueOf, wageBill, sponsorSlots, build, signSponsor, dropSponsor, contractAmount, SPONSOR_YEARS, marketEntries,
   buyPlayer, sellPlayer, promoteJunior, slotOf, MAX_ROSTER, MIN_ROSTER,
 } from '../league/finance.js';
 import { overall } from '../club/training.js';
@@ -83,17 +83,31 @@ export class FinanceUI {
 
   sponsors() {
     const f = this.f;
-    const chosen = new Set(f.sponsors.map(s => s.id));
-    const cards = f.offers.map(o => `
-      <button class="sponsor ${chosen.has(o.id) ? 'sel' : ''}" data-act="carSponsor" data-val="${o.id}">
+    const c = this.c;
+    const yearLabel = s => { const y = c.year + (s - c.season); return `${y}/${String((y + 1) % 100).padStart(2, '0')}`; };
+    const left = s => s.until - c.season + 1;
+    const contracts = f.sponsors.map(s => {
+      const canDrop = (s.signed ?? c.season) === c.season;
+      return `<div class="sponsor sel">
+        <span class="sp-logo" style="background:${s.bg};color:${s.fg}">${esc(s.name)}</span>
+        <span>${chf(s.amount)} pro Saison<br><small>+ ${chf(s.winBonus)} pro Sieg</small></span>
+        <em>✓ Vertrag ${s.years || 1} ${(s.years || 1) > 1 ? 'Jahre' : 'Jahr'} · bis ${yearLabel(s.until ?? c.season)}${left(s) > 1 ? ` (noch ${left(s)} Saisons)` : ' (letzte Saison)'}</em>
+        ${canDrop ? `<button data-act="carSponsorDrop" data-val="${s.id}">Vertrag auflösen</button>` : ''}</div>`;
+    }).join('');
+    const taken = new Set(f.sponsors.map(s => s.id));
+    const cards = f.offers.filter(o => !taken.has(o.id)).map(o => `
+      <div class="sponsor">
         <span class="sp-logo" style="background:${o.bg};color:${o.fg}">${esc(o.name)}</span>
-        <span>${chf(o.amount)} pro Saison<br><small>+ ${chf(o.winBonus)} pro Sieg</small></span>
-        <em>${chosen.has(o.id) ? '✓ unter Vertrag' : 'wählen'}</em></button>`).join('');
+        <small>+ ${chf(o.winBonus)} pro Sieg</small>
+        <div class="sp-years">${Object.keys(SPONSOR_YEARS).map(y => `<button data-act="carSponsor" data-val="${o.id}:${y}">
+          <b>${y} ${y > 1 ? 'Jahre' : 'Jahr'}</b><span>${chf(contractAmount(o, y))}</span><small>pro Saison</small></button>`).join('')}</div>
+      </div>`).join('');
     const total = f.sponsors.reduce((a, s) => a + s.amount, 0);
-    this.show(`<h2>Sponsoren ${seasonLabel(this.c)}</h2>${this.nav('carSponsors')}
-      <p>${f.sponsors.length} von ${sponsorSlots(this.c)} Plätzen belegt · zusammen ${chf(total)} pro Saison.
-      <span class="hint">Die Logos erscheinen bei Heimspielen auf den Banden. Mehr Plätze gibt es mit einer besseren Anzeigetafel. Jede Saison kommen neue Angebote.</span></p>
-      <div class="sponsors">${cards}</div>`);
+    this.show(`<h2>Sponsoren ${seasonLabel(c)}</h2>${this.nav('carSponsors')}
+      <p>${f.sponsors.length} von ${sponsorSlots(c)} Plätzen belegt · zusammen ${chf(total)} pro Saison.
+      <span class="hint">Verträge gibt es für 1, 2 oder 3 Saisons: Längere Verträge bringen etwas weniger pro Saison, dafür ist das Geld sicher – auch nach einem Abstieg. Aufgelöst werden kann nur in der Saison der Unterschrift. Die Logos erscheinen bei Heimspielen auf den Banden. Mehr Plätze gibt es mit einer besseren Anzeigetafel.</span></p>
+      ${contracts ? `<h3>Unter Vertrag</h3><div class="sponsors">${contracts}</div>` : ''}
+      <h3>Angebote</h3><div class="sponsors">${cards || '<p class="hint">Keine weiteren Angebote in dieser Saison.</p>'}</div>`);
   }
 
   // ------------------------------------------------------------ Transfers
@@ -157,7 +171,8 @@ export class FinanceUI {
       case 'carYouth': this.youth(); return true;
       case 'carPos': this.posFilter = val; this.market(); return true;
       case 'carBuild': this.result(build(this.c, val), `${FACILITIES[val].label} ausgebaut`); this.hall(); return true;
-      case 'carSponsor': this.result(toggleSponsor(this.c, val)); this.sponsors(); return true;
+      case 'carSponsor': { const [id, y] = val.split(':'); this.result(signSponsor(this.c, id, +y)); this.sponsors(); return true; }
+      case 'carSponsorDrop': this.result(dropSponsor(this.c, val)); this.sponsors(); return true;
       case 'carBuy': {
         const r = buyPlayer(this.c, this.club, +val, () => this.c.nextId++);
         this.result(r, r.ok ? `${r.p.firstName} ${r.p.lastName} gekauft – er ist in der Reserve` : '');

@@ -31,6 +31,19 @@ Bande, Sprint, oben Wechsel, Goalie, Linie, Pause. In den Einstellungen lassen
 sich die Tasten vergrössern und für Linkshänder spiegeln. Wiederholung und
 Jubel nach einem Tor lassen sich mit einer Taste oder durch Tippen überspringen.
 
+## Zu zweit online
+
+Hauptmenü → «Zu zweit online». Eine Person wählt «Spiel eröffnen» und schickt
+den Code mit 4 Zeichen (oder den Link) an die andere; diese gibt den Code ein
+und tritt bei. Der Gastgeber wählt die Spielart – **gegeneinander** oder
+**miteinander** im selben Team gegen den Computer – und die Teams (auch den
+Verein des Gasts) und pfeift an. Jedes spielt auf seinem eigenen Gerät; die
+Verbindung geht direkt von Gerät zu Gerät (PeerJS/WebRTC). Online-Spiele
+zählen nicht für den Verein.
+
+Lokal testen: zwei Tabs, einer über `http://localhost:8766`, der andere über
+`http://127.0.0.1:8766`.
+
 ## Spielstand
 
 - Wird automatisch im Browser gespeichert (nach jedem Spiel und jeder Änderung).
@@ -103,5 +116,6 @@ eigene Tabelle `uh_savegames`). Für ein eigenes Supabase-Projekt:
 - Regeln und alle Entscheide: [GAME_DESIGN.md](GAME_DESIGN.md)
 - Lizenzen: [CREDITS.md](CREDITS.md)
 - Tests ohne Grafik: `node tools/simtest.mjs`, `node tools/humantest.mjs`,
-  `node tools/actiontest.mjs`, `node tools/careertest.mjs`
+  `node tools/actiontest.mjs`, `node tools/careertest.mjs`,
+  `node tools/sponsortest.mjs`, `node tools/multitest.mjs`, `node tools/synctest.mjs`
 - Alle Spielwerte stehen in `js/config.js`.

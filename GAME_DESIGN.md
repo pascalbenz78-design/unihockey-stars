@@ -382,6 +382,13 @@ Konkrete Festlegungen während des Baus (Werte stehen in `js/config.js`).
 - Sponsoren: jede Saison 7 Angebote (Betrag je Liga, + Siegprämie), 3 Plätze +
   1 pro Anzeigetafel-Stufe. Bezahlt pro Qualifikationsrunde (1/14). Die
   Gewählten erscheinen bei Heimspielen auf den Banden.
+- Sponsorenverträge für 1, 2 oder 3 Saisons (Wunsch nach Etappe 6): pro Saison
+  100 % / 95 % / 90 % des Angebots, Siegprämie gleich. Längere Verträge sind
+  sicheres Geld (auch nach einem Abstieg), entgehen aber höheren Angeboten nach
+  einem Aufstieg. Laufende Verträge belegen ihren Platz auch in den folgenden
+  Saisons; ihre Sponsoren erscheinen nicht nochmals unter den Angeboten.
+  Auflösen geht nur in der Saison der Unterschrift. Alte Spielstände: bisherige
+  Sponsoren gelten als 1-Jahres-Verträge.
 - Löhne pro Runde nach Stärke: 0.1 × (Stärke − 30)^2.2 (mind. 40 Fr.).
 - Prämien (× Ligafaktor 1 / 1.2 / 1.6 / 2.5 / 4 für Liga 5…1): Cupsiege je
   Runde, Playoff-Halbfinal/-Final, Meistertitel, Aufstieg, Saisonziel.
@@ -444,6 +451,40 @@ Konkrete Festlegungen während des Baus (Werte stehen in `js/config.js`).
   («neuerer Stand gewinnt»). Ohne Anmeldung oder Schreibrecht nur lokal plus
   Datei-Export über die Download-Freigabe.
 - Bestätigungen überall mit eigenem Dialog statt `confirm()`.
+
+### Zu zweit online (Wunsch nach Etappe 6)
+- Freundschaftsspiel zu zweit, jedes auf seinem eigenen Gerät. Wählbar:
+  **gegeneinander** (jedes steuert ein Team) oder **miteinander** im selben Team
+  gegen den Computer (mit Schwierigkeit).
+- Verbindung wie beim Netzroller: auf GitHub Pages direkt von Gerät zu Gerät
+  (WebRTC über PeerJS 1.5.5, öffentlicher Vermittlungsserver, STUN von Google
+  und Cloudflare), im claude.ai-Artifact über den Live-Raum der Plattform
+  (Fähigkeit `room`). Beitreten mit 4-stelligem Code (ohne 0/o/1/l/i) oder
+  Einladungslink `?zu-zweit=CODE`.
+- Der Gastgeber stellt in der Lobby Spielart, Teams und Schwierigkeit ein. Zur
+  Auswahl stehen sein Verein, der Verein des Gasts (wird beim Beitreten
+  übertragen) und die zwei Standardteams. Gegeneinander spielt der Gastgeber
+  von links nach rechts.
+- Der Gastgeber rechnet das ganze Spiel; der Gast schickt nur seine Eingaben
+  (Richtung, gehaltene Tasten und Zähler je Taste, damit kein Tastendruck
+  verloren geht) und bekommt rund 20 Schnappschüsse pro Sekunde (Positionen,
+  Animationen, Ball, Uhr, Strafen, die letzten Ereignisse für Ton und
+  Meldungen; in Pausen Statistik, Tore und Resultat). Der Gast zeigt das Spiel
+  0,12 s verzögert und weich zwischen zwei Schnappschüssen. Ein Schnappschuss
+  ist höchstens rund 1,5 KB gross (Grenze im Live-Raum 4 KB).
+- Zu zweit im selben Team: Jeder steuert einen eigenen Spieler; nie beide
+  denselben. Der Ballführer geht an den, der den Pass gespielt hat, sonst an
+  den Näheren. Beim Bully bekommt der Gastgeber den Bullyspieler, der Gast den
+  nächsten Mitspieler. Den Goalie kann nur einer übernehmen. Im
+  Penaltyschiessen sind die beiden abwechselnd Schütze bzw. Goalie.
+- Markierung: eigener Spieler gelber Ring und Pfeil, Mitspieler blauer Ring,
+  der vom anderen Menschen gesteuerte Gegner roter Ring.
+- Online läuft das Spiel ohne Pause weiter (Menü nur zum Verlassen). Die
+  Drittelspause beendet der Gastgeber; der Gast sieht dieselbe Statistik und
+  wartet. Ohne Daten seit 2,5 s erscheint ein Hinweis; die Verbindung baut sich
+  selbst wieder auf.
+- Online-Spiele zählen nicht für den Verein (keine Verletzungen, kein Training,
+  keine Bilanz).
 
 ### Steuerung am PC (Wunsch nach Etappe 6)
 - Bewegung wahlweise mit Tastatur oder Maus (Einstellung «Bewegung (PC)»).

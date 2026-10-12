@@ -62,14 +62,16 @@ export class MTeam {
 }
 
 export class Match {
-  constructor({ teams, humanTeam = 0, difficulty = 'mittel', settings = {}, home = 0 }) {
+  // humans: Teams der menschlichen Spieler, z. B. [0] (allein), [0, 1] (gegeneinander), [0, 0] (zusammen)
+  constructor({ teams, humanTeam = 0, humans = null, difficulty = 'mittel', settings = {}, home = 0 }) {
+    humans = humans || (humanTeam != null ? [humanTeam] : []);
     this.home = home;               // Heimteam (Logo im Mittelkreis)
     const diff = CONFIG.difficulty[difficulty] || CONFIG.difficulty.mittel;
     this.difficulty = difficulty;
     this.tempo = diff.tempo;
     this.settings = { autoChange: false, autoGoalie: false, replays: true, ...settings };
-    const skill = i => (humanTeam === i ? CONFIG.ai.teammateSkill : diff.skill);
-    const gf = i => (humanTeam === i ? 1 : humanTeam == null ? 1 : diff.goalie);
+    const skill = i => (humans.includes(i) ? CONFIG.ai.teammateSkill : diff.skill);
+    const gf = i => (humans.includes(i) || !humans.length ? 1 : diff.goalie);
     this.teams = [new MTeam(0, teams[0], -1, skill(0), gf(0)), new MTeam(1, teams[1], 1, skill(1), gf(1))];
     this.ball = new Ball();
     this.time = 0;
@@ -102,11 +104,8 @@ export class Match {
       for (const r of ROLES) this.putOnField(t, r, t.linePlayer(0, r));
       this.putOnField(t, 'G', t.goalie);
     }
-    this.human = null;
-    if (humanTeam != null) {
-      this.teams[humanTeam].human = true;
-      this.human = new HumanController(this, this.teams[humanTeam]);
-    }
+    this.humans = humans.map((ti, k) => { this.teams[ti].human = true; return new HumanController(this, this.teams[ti], k); });
+    this.human = this.humans[0] || null;   // der Mensch an diesem Gerät (Anzeige, Markierung)
     this.setupFaceoff({ x: 0, y: 0 });
   }
 
@@ -116,7 +115,8 @@ export class Match {
   get isOT() { return this.period > T.periods; }
   emit(e) { this.events.push(e); }
   takeEvents() { const e = this.events; this.events = []; return e; }
-  isHumanControlled(p) { return !!this.human && this.human.controlled === p && this.human.active(p); }
+  controllerOf(p) { for (const h of this.humans) if (h.controlled === p && h.active(p)) return h; return null; }
+  isHumanControlled(p) { return !!this.controllerOf(p); }
 
   putOnField(team, role, p) {
     p.onField = true; p.role = role; team.onField[role] = p;
@@ -129,7 +129,7 @@ export class Match {
     p.onField = false; p.role = null; p.charge = null;
     if (this.ball.owner === p) this.ball.owner = null;
     if (this.ball.pass && this.ball.pass.to === p) this.ball.pass = null;
-    if (this.human) this.human.onRemoved(p);
+    for (const h of this.humans) h.onRemoved(p);
   }
 
   // Bester verfügbarer Ersatz für eine Position (Ersatzspieler bevorzugt)
@@ -178,7 +178,7 @@ export class Match {
     switch (this.state) {
       case 'faceoff':
         this.timer -= dt;
-        if (this.human) this.human.handleMeta();
+        for (const h of this.humans) h.handleMeta();
         for (const p of this.allOnField) { p.ctrl.mx = 0; p.ctrl.my = 0; p.ctrl.sprint = false; p.update(dt, this); }
         this.carryBall();
         if (this.timer <= 0) this.dropBall();
@@ -223,13 +223,14 @@ export class Match {
   // KI, Physik, Ball – gemeinsam für normales Spiel und Penaltyschiessen
   simTick(dt) {
     const ball = this.ball;
-    if (this.human) this.human.preTick(dt);
+    for (const h of this.humans) h.preTick(dt);
     for (const t of this.teams) updateTeamAI(t, this, dt);
     for (const t of this.teams) {
       const g = t.onField.G;
-      if (g && (!this.isHumanControlled(g) || this.human.goalieAssist)) updateGoalieAI(g, this, dt);
+      const h = g && this.controllerOf(g);
+      if (g && (!h || h.goalieAssist)) updateGoalieAI(g, this, dt);
     }
-    if (this.human) this.human.postAI(dt);
+    for (const h of this.humans) h.postAI(dt);
 
     const ps = this.allOnField;
     for (const p of ps) p.update(dt, this);
@@ -384,7 +385,8 @@ export class Match {
       this.processLineChanges(t, true);
       this.placeForFaceoff(t, spot);
     }
-    if (this.human) this.human.onFaceoff();
+    for (const h of this.humans) h.benched = true;   // erst alle frei, dann der Reihe nach wählen
+    for (const h of this.humans) h.onFaceoff();
     this.emit({ type: 'faceoff' });
   }
 
@@ -475,7 +477,7 @@ export class Match {
     p.receivedAt = this.time;
     p.receivedPass = !!pass && pass.from.team === p.team;
     this.emit({ type: 'receive', player: p });
-    if (this.human) this.human.onPossession(p);
+    for (const h of this.humans) h.onPossession(p);
   }
 
   checkPickups() {
@@ -649,7 +651,7 @@ export class Match {
     g.holdTime = 0;
     this.recordTouch(g);
     this.emit({ type: 'catch', player: g });
-    if (this.human) this.human.onPossession(g);
+    for (const h of this.humans) h.onPossession(g);
   }
 
   // ---------------------------------------------------------------- Aktionen
@@ -860,10 +862,10 @@ export class Match {
       if (cur) {
         if (immediate) np.setPos(cur.x, cur.y, cur.facing);
         else this.leaving.push({ p: cur, t: 0 });
-        const wasHuman = this.human && this.human.controlled === cur;
+        const wasHuman = this.humans.filter(h => h.controlled === cur);
         cur.onField = false; cur.role = null; cur.charge = null;
         if (this.ball.pass && this.ball.pass.to === cur) this.ball.pass.to = np;
-        if (wasHuman) this.human.onSubstituted(cur, np);
+        for (const h of wasHuman) h.onSubstituted(cur, np);
       }
       if (!immediate || !cur) {
         const gate = benchGate(t.side);

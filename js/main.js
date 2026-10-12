@@ -23,6 +23,7 @@ import { loadSettings, saveSettings } from './save/settings.js';
 import { applyTeamPrefs, recordMatchInjuries } from './club/teamStore.js';
 import { celebrationName } from './club/celebrations.js';
 import { FOUL_NAMES, INJURY_NAMES } from './match/rules.js';
+import { OnlineUI } from './ui/onlineUI.js';
 
 const DT = 1 / CONFIG.physics.tickRate;
 
@@ -46,6 +47,8 @@ class App {
     addEventListener('keydown', unlock);
     this.applyControlPrefs();
     this.careerUI = new CareerUI(this);
+    this.onlineUI = new OnlineUI(this);
+    this.online = null;           // laufende Online-Sitzung (zu zweit)
     this.career = loadCareer();
     if (this.career && !this.career.finance) { initFinance(this.career, this.club); saveCareer(this.career); }
     this.mode = 'menu';
@@ -58,9 +61,15 @@ class App {
     this.startDemo();
     this.menus.main();
     document.getElementById('loading').remove();
+    // Einladungslink: ?zu-zweit=CODE → direkt beitreten
+    const inv = new URLSearchParams(location.search).get('zu-zweit');
+    if (inv) {
+      try { history.replaceState(null, '', location.pathname); } catch { /* egal */ }
+      this.onlineUI.open('guest', inv.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 4));
+    }
 
     addEventListener('resize', () => this.renderer.resize());
-    document.addEventListener('visibilitychange', () => { if (document.hidden && this.mode === 'match') this.pause(); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden && this.mode === 'match' && !this.online) this.pause(); });
     requestAnimationFrame(t => this.frame(t));
     this.sync.startupCheck();
   }
@@ -114,6 +123,23 @@ class App {
     this.showTouch(false);
   }
 
+  // Online zu zweit: Match aus dem Setup des Gastgebers (beide Geräte gleich)
+  startOnlineMatch(setup) {
+    const s = this.online;
+    if (!s) return;
+    this.matchKind = 'online';
+    this.friendlyTeams = null;
+    this.spectators = 0;
+    this.match = new Match({ teams: setup.teams, humans: setup.humans, difficulty: setup.diff, settings: setup.settings });
+    if (s.role === 'guest') { this.match.human = this.match.humans[1]; this.match.takeEvents(); }
+    else s.log = null;
+    this.beginMatch();
+  }
+
+  leaveOnlineMatch() {
+    if (this.mode === 'match') this.startDemo();
+  }
+
   startFriendly(pick = 0, opp = 1) {
     this.refreshTeams();
     const all = this.allTeams();
@@ -161,6 +187,7 @@ class App {
   }
 
   toMenu() {
+    if (this.online) this.onlineUI.leave();
     this.paused = false;
     this.startDemo();
     this.menus.main();
@@ -168,6 +195,12 @@ class App {
 
   pause() {
     if (this.mode !== 'match' || this.paused) return;
+    if (this.online) {
+      // Online läuft das Spiel weiter; nur ein kleines Menü
+      if (this.menus.visible && this.menus.screen === 'onlinePause') this.menus.hide();
+      else if (!this.menus.visible) this.menus.onlinePause();
+      return;
+    }
     if (this.match.state === 'intermission' || this.match.state === 'end') return;
     this.paused = true;
     this.menus.pause();
@@ -210,7 +243,20 @@ class App {
     this.fps += (1 / Math.max(dt, 1e-3) - this.fps) * 0.05;
     const m = this.match;
 
-    if (this.mode === 'match') {
+    if (this.mode === 'match' && this.online && this.online.role === 'guest') {
+      // Gast: rechnet nicht selbst, zeigt den Zustand des Gastgebers
+      const { state, pressed } = this.input.poll();
+      if (pressed.pause) this.pause();
+      if ((m.state === 'replay' || m.state === 'celebrate') && (this.skipRequest || pressed.shoot || pressed.pass || pressed.bank || pressed.switch)) pressed.skip = true;
+      this.skipRequest = false;
+      this.online.guestFrame(m, state, pressed, dt);
+      if (this.menus.screen === 'intermission' && this.menus.visible && m.state !== 'intermission') {
+        this.menus.hide();
+        this.hud.message(m.periodLabel(), 1.6, 'small');
+      }
+      this.handleEvents();
+      this.hud.update(m, dt);
+    } else if (this.mode === 'match') {
       const { state, pressed } = this.input.poll();
       if (pressed.pause) { if (this.paused) this.resume(); else this.pause(); }
       if ((m.state === 'replay' || m.state === 'celebrate') && (this.skipRequest || pressed.shoot || pressed.pass || pressed.bank || pressed.switch)) {
@@ -220,10 +266,12 @@ class App {
       this.skipRequest = false;
       if (!this.paused && m.human) {
         m.human.setInput(state, pressed);
+        if (this.online) this.online.applyGuestInput(m);
         this.acc += dt;
         while (this.acc >= DT) { m.step(DT); this.acc -= DT; }
       }
       this.handleEvents();
+      if (this.online) this.online.afterStep(m);
       this.hud.update(m, dt);
     } else {
       // Demo: läuft endlos
@@ -236,8 +284,19 @@ class App {
       }
       this.match.takeEvents();
     }
+    this.updateNetInfo();
     this.renderer.render(this.paused ? 0 : dt);
     this.sound.crowd(this.renderer.excitement, this.mode === 'match' && !this.paused);
+  }
+
+  // Hinweis bei unterbrochener Verbindung (online)
+  updateNetInfo() {
+    const el = document.getElementById('netinfo');
+    if (!el) return;
+    const s = this.online;
+    const lost = !!s && this.mode === 'match' && this.matchKind === 'online' && s.lost();
+    el.classList.toggle('hidden', !lost);
+    if (lost) el.textContent = s.role === 'guest' ? 'Verbindung zum Gastgeber unterbrochen – verbinde neu …' : 'Mitspieler nicht verbunden – warte …';
   }
 
   // ------------------------------------------------------------ Karriere
@@ -342,7 +401,9 @@ class App {
   handleEvents() {
     const m = this.match;
     const snd = this.sound;
+    const hostLog = this.online && this.online.role === 'host' && this.matchKind === 'online';
     for (const e of m.takeEvents()) {
+      if (hostLog) this.online.logEvent(m, e);
       switch (e.type) {
         case 'shot': snd.shot(e.power); break;
         case 'pass': snd.pass(); break;
@@ -390,16 +451,18 @@ class App {
           break;
         case 'shootoutAttempt': {
           const own = m.human && e.team === m.human.team;
-          this.hud.message(`<span>${e.team.data.short} · ${e.shooter.data.firstName} ${e.shooter.data.lastName}</span><small>${own ? 'Du schiesst!' : 'Du hältst!'}</small>`, 1.4, 'small');
+          const turn = m.human && m.human.benched ? (own ? 'Dein Mitspieler schiesst' : 'Dein Mitspieler hält') : (own ? 'Du schiesst!' : 'Du hältst!');
+          this.hud.message(`<span>${e.team.data.short} · ${e.shooter.data.firstName} ${e.shooter.data.lastName}</span><small>${turn}</small>`, 1.4, 'small');
           break;
         }
         case 'shootoutResult':
           this.hud.message(e.scored ? '<b>TOR!</b>' : '<b>Gehalten!</b>', 1.6, e.scored ? 'goal' : 'penalty');
           break;
         case 'periodEnd':
-          this.menus.intermission(m);
+          this.menus.intermission(m, this.matchKind === 'online' && !!this.online && this.online.role === 'guest');
           break;
         case 'gameEnd': {
+          if (this.matchKind === 'online') { this.menus.end(m, [], '', false, this.online ? this.online.role : 'guest'); break; }
           if (this.matchKind === 'career') {
             const extra = this.finishCareerMatch(m);
             this.menus.end(m, [], extra, true);

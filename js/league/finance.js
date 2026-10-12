@@ -82,18 +82,24 @@ export function book(c, cat, amount, label) {
 
 export const sponsorSlots = c => 3 + c.finance.facilities.scoreboard;
 
+// Vertragsdauer: länger = sicher, dafür etwas weniger pro Saison
+export const SPONSOR_YEARS = { 1: 1, 2: 0.95, 3: 0.9 };
+export const contractAmount = (o, years) => Math.round(o.amount * SPONSOR_YEARS[years] / 100) * 100;
+
 // Neue Saison: Sponsorenangebote, Junioren, Markt
 export function newSeasonFinance(c, club, rand = Math.random) {
   const f = c.finance;
   f.lastSeason = f.season;
   f.season = emptyTotals();
   const L = c.leagues.findIndex(l => l.includes('OWN'));
-  const pool = [...SPONSOR_POOL].sort(() => rand() - 0.5).slice(0, 7);
+  // Laufende Verträge bleiben, abgelaufene fallen weg (alte Spielstände: Vertrag = 1 Saison)
+  f.sponsors = (f.sponsors || []).filter(s => (s.until ?? -1) >= c.season);
+  const busy = new Set(f.sponsors.map(s => s.name));
+  const pool = SPONSOR_POOL.filter(s => !busy.has(s.name)).sort(() => rand() - 0.5).slice(0, 7);
   f.offers = pool.map((s, i) => {
     const amount = Math.round(SPONSOR_BASE[L] * (0.6 + rand() * 0.8) / 500) * 500;
     return { ...s, id: `${c.season}-${i}`, amount, winBonus: Math.round(amount / 25 / 50) * 50 };
   });
-  f.sponsors = [];
   makeJuniors(c, rand);
   refreshMarket(c, club, rand, true);
 }
@@ -183,13 +189,25 @@ export function financeSeasonEnd(c, summary) {
 
 // ------------------------------------------------------------ Sponsoren
 
-export function toggleSponsor(c, id) {
+// Vertrag für 1, 2 oder 3 Saisons abschliessen
+export function signSponsor(c, id, years) {
   const f = c.finance;
-  const i = f.sponsors.findIndex(s => s.id === id);
-  if (i >= 0) { f.sponsors.splice(i, 1); return { ok: true }; }
+  years = SPONSOR_YEARS[years] ? +years : 1;
+  if (f.sponsors.some(s => s.id === id)) return { ok: false, msg: 'Schon unter Vertrag' };
   if (f.sponsors.length >= sponsorSlots(c)) return { ok: false, msg: `Nur ${sponsorSlots(c)} Sponsorenplätze (mehr mit besserer Anzeigetafel)` };
   const o = f.offers.find(s => s.id === id);
-  if (o) f.sponsors.push(o);
+  if (!o) return { ok: false, msg: 'Angebot nicht mehr da' };
+  f.sponsors.push({ ...o, base: o.amount, amount: contractAmount(o, years), years, signed: c.season, until: c.season + years - 1 });
+  return { ok: true };
+}
+
+// Kündigen geht nur in der Saison, in der unterschrieben wurde
+export function dropSponsor(c, id) {
+  const f = c.finance;
+  const s = f.sponsors.find(x => x.id === id);
+  if (!s) return { ok: true };
+  if ((s.signed ?? c.season) !== c.season) return { ok: false, msg: 'Laufende Verträge aus früheren Saisons lassen sich nicht kündigen' };
+  f.sponsors = f.sponsors.filter(x => x !== s);
   return { ok: true };
 }
 

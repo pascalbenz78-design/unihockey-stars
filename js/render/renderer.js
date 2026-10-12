@@ -68,6 +68,12 @@ export class Renderer {
     this.arrow = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.28, 4), new THREE.MeshBasicMaterial({ color: 0xffe14d }));
     this.arrow.rotation.x = Math.PI;
     this.scene.add(this.arrow);
+    // Zu zweit: Ring für den Spieler des anderen Menschen (blau = Mitspieler, rot = Gegner)
+    this.marker2 = new THREE.Mesh(new THREE.RingGeometry(0.48, 0.6, 32), new THREE.MeshBasicMaterial({ color: 0x4dc3ff, transparent: true, opacity: 0.85, depthWrite: false }));
+    this.marker2.rotation.x = -Math.PI / 2;
+    this.marker2.position.y = 0.011;
+    this.marker2.visible = false;
+    this.scene.add(this.marker2);
     // Ladebalken um den Spieler
     this.chargeRing = new THREE.Mesh(new THREE.RingGeometry(0.66, 0.8, 32, 1, Math.PI / 2, Math.PI * 2), new THREE.MeshBasicMaterial({ color: 0xff5a1f, transparent: true, opacity: 0.95, depthWrite: false, side: THREE.DoubleSide }));
     this.chargeRing.rotation.x = -Math.PI / 2;
@@ -220,6 +226,13 @@ export class Renderer {
         this.chargeRing.position.x = ctl.x; this.chargeRing.position.z = -ctl.y;
         this.chargeRing.material.color.setHSL(0.15 - c * 0.15, 1, 0.55);
       }
+    }
+    const oh = (m.humans || []).find(h => h !== m.human && !h.benched);
+    const oc = oh && oh.controlled;
+    this.marker2.visible = !!(oc && oc.onField && !frame && (m.state === 'play' || m.state === 'faceoff' || m.state === 'shootout'));
+    if (this.marker2.visible) {
+      this.marker2.position.x = oc.x; this.marker2.position.z = -oc.y;
+      this.marker2.material.color.set(m.human && oh.team === m.human.team ? 0x4dc3ff : 0xff6b5a);
     }
     const mb = m.ball;
     const pt = !frame && mb.pass && !mb.owner && mb.pass.to && mb.pass.to.onField && m.human && mb.pass.to.team === m.human.team ? mb.pass.to : null;
