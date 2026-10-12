@@ -93,7 +93,8 @@ export class Menus {
       <h2>Einstellungen</h2>
       <div class="field-row"><label>Schwierigkeit</label><div class="opts">${this.opts('difficulty', CONFIG.difficulty, s.difficulty)}</div></div>
       <div class="field-row"><label>Grafik</label><div class="opts">${this.opts('graphics', CONFIG.graphics, s.graphics)}</div></div>
-      <div class="field-row"><label>Wechsel</label><div class="opts">${this.toggle('autoChange', s.autoChange, 'Auto-Wechsel')}</div></div>
+      <div class="field-row"><label>Wechsel</label><div class="opts">${this.toggle('autoChange', s.autoChange, 'Linie automatisch wechseln')}</div></div>
+      <div class="field-row"><label>Spielerwahl</label><div class="opts">${this.toggle('autoSwitch', s.autoSwitch !== false, 'Automatisch der Spieler am nächsten beim Ball')}</div></div>
       <div class="field-row"><label>Goalie</label><div class="opts">${this.toggle('autoGoalie', s.autoGoalie, 'Bei Schuss aufs eigene Tor automatisch übernehmen')}</div></div>
       <div class="field-row"><label>Ton</label><div class="opts">${this.toggle('sound', s.sound, 'Ton')}
         ${this.opts('volume', { '0.35': { label: 'Leise' }, '0.7': { label: 'Mittel' }, '1.0': { label: 'Laut' } }, String(s.volume))}</div></div>
@@ -120,13 +121,13 @@ export class Menus {
             <tr><td><kbd>Alt</kbd> (oder <kbd>X</kbd>)</td><td>Pass (in Laufrichtung)</td></tr>
             <tr><td><kbd>C</kbd></td><td>Bandenpass</td></tr>
             <tr><td><kbd>Shift</kbd></td><td>Sprint (kostet Ausdauer) · Goalie: Hechtsprung</td></tr>
-            <tr><td><kbd>Y</kbd></td><td>zum Spieler am nächsten beim Ball wechseln</td></tr>
+            <tr><td><kbd>Y</kbd></td><td>anderen Spieler wählen (sonst automatisch der Nächste am Ball)</td></tr>
             <tr><td><kbd>G</kbd></td><td>Goalie übernehmen / abgeben</td></tr>
             <tr><td><kbd>Q</kbd></td><td>Linienwechsel</td></tr>
             <tr><td><kbd>P</kbd></td><td>Pause</td></tr>
           </table>
           <h3>Handy</h3>
-          <p>Links Joystick (Daumen irgendwo hinlegen), rechts Schuss, Pass, Bande, Sprint. Oben Spieler-Wechsel, Goalie, Linie, Pause.</p>
+          <p>Links Joystick (Daumen irgendwo hinlegen), unten links «Wechsel» (anderen Spieler wählen), rechts Schuss, Pass, Bande, Sprint. Oben Goalie, Linie, Vollbild, Pause.</p>
         </div>
         <div>
           <h3>Tipps</h3>
@@ -134,7 +135,7 @@ export class Menus {
             <li><b>Direktschuss:</b> Schuss drücken, kurz bevor der Pass ankommt.</li>
             <li><b>Ball erobern:</b> ohne Ball nahe beim Gegner Schuss oder Pass drücken (Stockeinsatz).</li>
             <li>Mit Richtung nach oben/unten beim Schuss zielst du in die obere bzw. untere Torecke.</li>
-            <li>Müde Spieler sind langsamer und schiessen ungenauer – rechtzeitig wechseln!</li>
+            <li>Müde Spieler sind langsamer und schiessen ungenauer – rechtzeitig wechseln! Beim Linienwechsel gehen die Spieler nacheinander raus; der Neue kommt erst, wenn der Alte über der Bande ist.</li>
             <li><b>Auslage:</b> Schüsse auf die Seite, auf der die Kelle ist (Rückhand), sind ungenauer.</li>
             <li><b>Karriere:</b> 5 Ligen, Cup, Playoffs, Auf-/Abstieg. Geld für Halle, Sponsoren (Verträge für 1–3 Saisons), Transfers und Nachwuchs.</li>
             <li><b>Zu zweit online:</b> Eine Person eröffnet und schickt den Code (oder den Link), die andere tritt bei. Gegeneinander oder miteinander gegen den Computer. Online läuft das Spiel ohne Pause.</li>

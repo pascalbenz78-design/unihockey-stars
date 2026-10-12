@@ -39,6 +39,8 @@ export class MTeam {
     this.activeLine = 0;
     this.nextLine = 0;
     this.pending = new Set();
+    this.changes = [];              // laufende Wechsel: { role, out, inP } – Neuer wartet, bis der Alte draussen ist
+    this.lastChangeStart = -9;
     this.vacant = new Set();        // Positionen, die wegen Strafen leer bleiben
     this.penalties = [];
     this.onField = {};
@@ -69,7 +71,7 @@ export class Match {
     const diff = CONFIG.difficulty[difficulty] || CONFIG.difficulty.mittel;
     this.difficulty = difficulty;
     this.tempo = diff.tempo;
-    this.settings = { autoChange: false, autoGoalie: false, replays: true, ...settings };
+    this.settings = { autoChange: false, autoGoalie: false, autoSwitch: true, replays: true, ...settings };
     const skill = i => (humans.includes(i) ? CONFIG.ai.teammateSkill : diff.skill);
     const gf = i => (humans.includes(i) || !humans.length ? 1 : diff.goalie);
     this.teams = [new MTeam(0, teams[0], -1, skill(0), gf(0)), new MTeam(1, teams[1], 1, skill(1), gf(1))];
@@ -820,6 +822,7 @@ export class Match {
   startShootout() {
     this.state = 'shootout';
     this.leaving = [];
+    for (const t of this.teams) { t.changes = []; t.pending.clear(); }
     this.shootout = new Shootout(this);
     this.emit({ type: 'shootoutStart' });
   }
@@ -842,13 +845,17 @@ export class Match {
   // ---------------------------------------------------------------- Wechsel
 
   requestLineChange(t, quiet = false) {
-    if (t.pending.size || this.shootout) return;
+    if (t.pending.size || t.changes.length || this.shootout) return;
     t.nextLine = (t.activeLine + 1) % 3;
     for (const r of ROLES) if (!t.vacant.has(r)) t.pending.add(r);
     if (!quiet) this.emit({ type: 'lineChange', team: t, line: t.nextLine });
   }
 
   processLineChanges(t, immediate) {
+    if (!immediate) { this.flyingChange(t); return; }
+    // Unterbruch: laufende Wechsel sofort abschliessen
+    for (const c of t.changes) this.finishChange(t, c, true);
+    t.changes = [];
     if (!t.pending.size) return;
     for (const r of [...t.pending]) {
       if (t.vacant.has(r)) { t.pending.delete(r); continue; }
@@ -876,8 +883,65 @@ export class Match {
     if (!t.pending.size) t.activeLine = t.nextLine;
   }
 
+  // Fliegender Wechsel im Spiel: gestaffelt, höchstens maxOut gleichzeitig unterwegs,
+  // der Neue betritt das Feld erst, wenn der Alte über der Bande ist (nie mehr als 5 Feldspieler)
+  flyingChange(t) {
+    const LC = CONFIG.lineChange;
+    // Abschliessen: Alter ist angekommen (nicht mehr unterwegs)
+    for (const c of [...t.changes]) {
+      if (this.leaving.some(l => l.p === c.out)) continue;
+      t.changes.splice(t.changes.indexOf(c), 1);
+      this.finishChange(t, c, false);
+    }
+    // Starten: wer am nächsten bei der Bank ist, zuerst
+    if (t.pending.size && t.changes.length < LC.maxOut && this.time - t.lastChangeStart >= LC.stagger) {
+      const gate = benchGate(t.side);
+      let best = null, bd = Infinity;
+      for (const r of t.pending) {
+        if (t.vacant.has(r)) { t.pending.delete(r); continue; }
+        const cur = t.onField[r];
+        if (cur && (this.ball.owner === cur || cur.fallen > 0)) continue;
+        const d = cur ? Math.hypot(cur.x - gate.x, cur.y - gate.y) : -1;
+        if (d < bd) { bd = d; best = r; }
+      }
+      if (best) {
+        const r = best, cur = t.onField[r];
+        t.pending.delete(r);
+        let np = t.linePlayer(t.nextLine, r);
+        if (np === cur) np = null;
+        else if (np.onField || np.inBox || injured(np) || t.changes.some(c => c.inP === np)) np = this.findReplacement(t, r);
+        if (cur && np) {
+          t.lastChangeStart = this.time;
+          this.removeFromField(cur);
+          this.leaving = this.leaving.filter(l => l.p !== cur && l.p !== np);
+          this.leaving.push({ p: cur, t: 0, change: true });
+          t.changes.push({ role: r, out: cur, inP: np });
+        } else if (!cur && np) {
+          this.finishChange(t, { role: r, inP: np }, false);
+        }
+      }
+    }
+    if (!t.pending.size && !t.changes.length) t.activeLine = t.nextLine;
+  }
+
+  // Neuer Spieler kommt aufs Feld (ausser die Position ist inzwischen besetzt oder wegen Strafe leer)
+  finishChange(t, c, immediate) {
+    const r = c.role;
+    if (t.onField[r] || t.vacant.has(r)) return;
+    let np = c.inP;
+    if (!np || np.onField || np.inBox || injured(np)) np = this.findReplacement(t, r);
+    if (!np) return;
+    this.leaving = this.leaving.filter(l => l.p !== np && l.p !== c.out);
+    if (immediate && c.out) np.setPos(c.out.x, c.out.y, c.out.facing);
+    else {
+      const gate = benchGate(t.side);
+      np.setPos(gate.x + (Math.random() - 0.5) * 1.5, gate.y - 0.3, -Math.PI / 2);
+    }
+    this.putOnField(t, r, np);
+  }
+
   considerLineChange(t) {
-    if (t.pending.size) return;
+    if (t.pending.size || t.changes.length) return;
     if (t.human && !this.settings.autoChange) return;
     const ball = this.ball;
     const ownGoalX = t.side * GOAL_X;
@@ -893,7 +957,7 @@ export class Match {
       if (l.wait > 0) { l.wait -= dt; p.anim.t += dt; continue; }
       const g = l.target || benchGate(p.team.side);
       const dx = g.x - p.x, dy = (g.y + 0.6) - p.y, d = Math.hypot(dx, dy);
-      const v = p.injuredNow ? 1.6 : 3.5;
+      const v = p.injuredNow ? 1.6 : l.change ? CONFIG.lineChange.exitSpeed : 3.5;
       if (d > 0.05) {
         p.vx = dx / d * v; p.vy = dy / d * v;
         p.x += p.vx * dt; p.y += p.vy * dt;

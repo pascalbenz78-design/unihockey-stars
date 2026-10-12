@@ -101,7 +101,7 @@ export function encodeSnapshot(m, log) {
   const quiet = m.state === 'intermission' || m.state === 'end';
   const s = {
     t: r2(m.time), st: m.state, pe: m.period, cl: r1(m.clock), nx: m.next,
-    tm: m.teams.map(t => [t.score, t.activeLine, t.nextLine, t.pending.size, [...t.vacant].join(','),
+    tm: m.teams.map(t => [t.score, t.activeLine, t.nextLine, t.pending.size + t.changes.length, [...t.vacant].join(','),
       t.penalties.map(p => [keyOf(m, p.player), Math.round(p.remaining), p.waiting ? 1 : 0])]),
     adv: m.rules.pending ? m.rules.pending.victim.team.index : -1,
     sig: r1(m.rules.signalUntil || 0),

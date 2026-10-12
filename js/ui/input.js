@@ -53,6 +53,7 @@ export class Input {
     const base = knob.parentElement;
     const update = e => {
       if (!this.mouseMode || e.pointerType === 'touch') return;
+      if (e.target && e.target.closest && e.target.closest('.b-switch')) { stop(); return; }   // über der Wechsel-Taste stehen bleiben
       const r = base.getBoundingClientRect();
       const R = r.width / 2;
       const dx = e.clientX - (r.left + R), dy = e.clientY - (r.top + R);
@@ -106,6 +107,7 @@ export class Input {
 
     for (const btn of buttons) {
       const act = btn.dataset.act;
+      if (act === 'fullscreen' || act === 'pause') continue;   // eigene Behandlung im Hauptprogramm
       btn.addEventListener('pointerdown', e => {
         e.preventDefault(); e.stopPropagation();
         this.pressed[act] = true; this.held[act] = true;

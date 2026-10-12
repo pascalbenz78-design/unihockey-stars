@@ -74,7 +74,7 @@ export class Hud {
     li.classList.toggle('hidden', !h || !!match.shootout);
     if (!h || match.shootout) return;
     const t = h.team;
-    const pend = t.pending.size > 0;
+    const pend = t.pending.size > 0 || (t.changes && t.changes.length > 0);
     this.$('linelabel').textContent = pend ? `Wechsel → Linie ${t.nextLine + 1}` : `Linie ${t.activeLine + 1}`;
     this.$('linelabel').classList.toggle('pending', pend);
     const sk = t.skaters;

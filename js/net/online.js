@@ -128,7 +128,7 @@ export class OnlineSession {
     const c = this.validCfg();
     const setup = {
       teams, mode: c.mode, humans: c.mode === 'gegen' ? [0, 1] : [0, 0], diff: c.mode === 'gegen' ? 'mittel' : c.diff,
-      settings: { autoChange: !!this.app.settings.autoChange, autoGoalie: !!this.app.settings.autoGoalie },
+      settings: this.app.matchSettings(),
     };
     const parts = splitText(await packText(JSON.stringify(setup)));
     const sid = rid();

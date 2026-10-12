@@ -449,3 +449,12 @@ body.mouse-move.lefty #joybase { left: auto; right: max(24px, env(safe-area-inse
   position: absolute; left: 50%; top: 64px; transform: translateX(-50%); padding: 8px 16px; border-radius: 8px;
   background: rgba(180, 40, 30, 0.9); color: #fff; font-weight: 700; font-size: 14px; white-space: nowrap; pointer-events: none;
 }
+
+/* Wechsel-Taste unten beim Joystick (Handy links, Linkshänder rechts, Maus links neben dem Joystick) */
+#touch .b-switch {
+  position: absolute; left: max(14px, env(safe-area-inset-left)); bottom: 14px; width: 74px; height: 46px;
+  border-radius: 23px; font-size: 13px; z-index: 1;
+}
+body.lefty #touch .b-switch { left: auto; right: max(14px, env(safe-area-inset-right)); }
+body.mouse-move #touch .b-switch { left: auto; right: calc(max(24px, env(safe-area-inset-right)) + 186px); bottom: 86px; }
+#btns-top [data-act="fullscreen"] { font-size: 16px !important; padding: 4px 10px !important; }

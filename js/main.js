@@ -108,6 +108,10 @@ class App {
     this.input.bindTouch(document.getElementById('joyzone'), document.getElementById('joyknob'), t.querySelectorAll('[data-act]'));
     this.input.bindMouse(document.getElementById('joyknob'));
     t.querySelector('[data-act="pause"]').addEventListener('pointerdown', () => this.pause());
+    // Vollbild braucht einen «echten» Klick (pointerdown zählt beim Tippen nicht)
+    const fs = t.querySelector('[data-act="fullscreen"]');
+    if (!this.canFullscreen()) fs.remove();
+    else fs.addEventListener('click', () => this.toggleFullscreen());
     // Tippen/Klicken überspringt Wiederholung und Jubel
     addEventListener('pointerdown', e => {
       if (this.mode === 'match' && !this.menus.visible && !e.target.closest('#btns-top')) this.skipRequest = true;
@@ -140,6 +144,11 @@ class App {
     if (this.mode === 'match') this.startDemo();
   }
 
+  matchSettings() {
+    const s = this.settings;
+    return { autoChange: !!s.autoChange, autoGoalie: !!s.autoGoalie, autoSwitch: s.autoSwitch !== false };
+  }
+
   startFriendly(pick = 0, opp = 1) {
     this.refreshTeams();
     const all = this.allTeams();
@@ -149,8 +158,7 @@ class App {
     this.friendlyTeams = teams;
     this.matchKind = 'friendly';
     this.match = new Match({
-      teams, humanTeam: 0, difficulty: this.settings.difficulty,
-      settings: { autoChange: this.settings.autoChange, autoGoalie: this.settings.autoGoalie },
+      teams, humanTeam: 0, difficulty: this.settings.difficulty, settings: this.matchSettings(),
     });
     this.beginMatch();
   }
@@ -166,6 +174,23 @@ class App {
     this.hud.message(this.matchKind === 'career' && this.spectators ? `1. Drittel<small>${this.spectators.toLocaleString('de-CH')} Zuschauer</small>` : '1. Drittel', 2, 'small');
     this.input.clear();
     this.tryFullscreen();
+  }
+
+  canFullscreen() {
+    const el = document.documentElement;
+    return !!(el.requestFullscreen || el.webkitRequestFullscreen);
+  }
+
+  toggleFullscreen() {
+    const el = document.documentElement;
+    try {
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      } else {
+        const r = (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+        if (r && r.then) r.then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => {})).catch(() => {});
+      }
+    } catch { /* nicht unterstützt */ }
   }
 
   tryFullscreen() {
@@ -224,7 +249,7 @@ class App {
     this.settings[k] = v;
     saveSettings(this.settings);
     if (k === 'graphics') this.createRenderer();
-    if (this.match && (k === 'autoChange' || k === 'autoGoalie')) this.match.settings[k] = v;
+    if (this.match && (k === 'autoChange' || k === 'autoGoalie' || k === 'autoSwitch')) this.match.settings[k] = v;
     if (k === 'sound' || k === 'volume') this.sound.setEnabled(this.settings.sound, +this.settings.volume);
     if (k === 'touchSize' || k === 'lefty') this.applyControlPrefs();
     if (k === 'moveInput') this.showTouch(this.mode === 'match');
@@ -330,8 +355,7 @@ class App {
     const [hd, ad] = chooseKits(ownHome ? own : opp, ownHome ? opp : own);
     const teams = ownHome ? [hd, ad] : [ad, hd];
     this.match = new Match({
-      teams, humanTeam: 0, home: ownHome ? 0 : 1, difficulty: this.settings.difficulty,
-      settings: { autoChange: this.settings.autoChange, autoGoalie: this.settings.autoGoalie },
+      teams, humanTeam: 0, home: ownHome ? 0 : 1, difficulty: this.settings.difficulty, settings: this.matchSettings(),
     });
     this.matchKind = 'career';
     // Halle des Heimteams, Auslastung, Sponsoren auf den Banden

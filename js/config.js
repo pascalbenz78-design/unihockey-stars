@@ -107,6 +107,20 @@ export const CONFIG = {
     leadFactor: 0.85,
   },
 
+  // Fliegender Linienwechsel: der Neue kommt erst, wenn der Alte über der Bande ist
+  lineChange: {
+    stagger: 0.8,            // Sekunden zwischen zwei Spielern, die rausgehen
+    maxOut: 2,               // höchstens so viele gleichzeitig unterwegs zur Bank
+    exitSpeed: 6,            // Laufen zur Bank (m/s)
+  },
+
+  // Automatische Spielerwahl: gesteuert wird der Spieler am nächsten beim Ball
+  autoSwitch: {
+    margin: 1.2,             // erst wechseln, wenn ein anderer so viel näher ist (m)
+    minGap: 0.35,            // Sekunden zwischen zwei automatischen Wechseln
+    manualHold: 2.5,         // nach «Wechsel» so lange nicht automatisch zurückwechseln
+  },
+
   stamina: {
     drainPerSec: 1 / 80,
     sprintFactor: 2.6,
@@ -206,6 +220,7 @@ export const CONFIG = {
     graphics: 'mittel',
     autoChange: false,
     autoGoalie: false,
+    autoSwitch: true,
     sound: true,
     volume: 0.7,
     touchSize: 'normal',

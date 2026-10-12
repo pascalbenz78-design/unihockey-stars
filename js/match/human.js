@@ -19,6 +19,8 @@ export class HumanController {
     this.goalieAssist = true;    // Goalie ohne Eingabe stellt sich selbst
     this.idle = 0;
     this.oneTimerUntil = -1;
+    this.manualUntil = -1;       // nach «Wechsel» kurz keine automatische Wahl
+    this.lastAuto = -1;
     this.input = { mx: 0, my: 0, sprint: false, shootHeld: false };
     this.pressed = {};
   }
@@ -99,6 +101,26 @@ export class HumanController {
     if (cur.isGoalie) { this.goalieMode = false; this.autoGoalie = false; }
     if (this.match.ball.owner === cur && !cur.isGoalie) return; // mit Ball nicht wegschalten
     this.controlled = n;
+    this.manualUntil = this.match.time + CONFIG.autoSwitch.manualHold;
+  }
+
+  // Ohne eigenen Ballbesitz steuert man automatisch den Spieler am nächsten beim Ball
+  autoSwitch() {
+    const m = this.match, b = m.ball, AS = CONFIG.autoSwitch;
+    if (!m.settings.autoSwitch || m.shootout || m.state !== 'play') return;
+    const cur = this.controlled;
+    if (cur.isGoalie || cur.charge != null) return;
+    if (b.owner && b.owner.team === this.team) return;
+    if (m.time < this.manualUntil || m.time < this.lastAuto + AS.minGap) return;
+    const pt = !b.owner && b.pass && b.pass.to;
+    let target, forced = false;
+    if (pt && pt.team === this.team && pt.onField && !this.takenByPartner(pt)) { target = pt; forced = true; }
+    else target = this.nearestSkater();
+    if (!target || target === cur) return;
+    const d = p => Math.hypot(p.x - b.x, p.y - b.y);
+    if (!forced && cur.onField && d(target) > d(cur) - AS.margin) return;
+    this.controlled = target;
+    this.lastAuto = m.time;
   }
 
   onFaceoff() {
@@ -128,6 +150,7 @@ export class HumanController {
     if (!this.shouldTake(p)) return;
     this.goalieMode = false; this.autoGoalie = false;
     this.controlled = p;
+    this.manualUntil = -1;
     // Direktschuss vorgemerkt?
     if (this.match.time <= this.oneTimerUntil && p.receivedPass) {
       this.oneTimerUntil = -1;
@@ -159,7 +182,7 @@ export class HumanController {
     const m = this.match, b = m.ball, inp = this.input;
     if (this.benched) { this.pressed = {}; return; }
     if (!this.controlled.onField) this.controlled = this.fallback();
-    if (!m.shootout) this.handleMetaInPlay();
+    if (!m.shootout) { this.handleMetaInPlay(); this.autoSwitch(); }
     else { this.pressed.line = this.pressed.goalie = this.pressed.switch = false; }
 
     // Goalie automatisch übernehmen bei Schuss aufs eigene Tor

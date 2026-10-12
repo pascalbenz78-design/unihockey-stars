@@ -486,6 +486,25 @@ Konkrete Festlegungen während des Baus (Werte stehen in `js/config.js`).
 - Online-Spiele zählen nicht für den Verein (keine Verletzungen, kein Training,
   keine Bilanz).
 
+### Spielerwahl, Linienwechsel, Handy-Tasten (Wunsch nach Etappe 6)
+- Automatische Spielerwahl (Einstellung «Spielerwahl», Standard an): Hat das
+  eigene Team den Ball nicht, steuert man automatisch den Feldspieler am
+  nächsten beim Ball (Wechsel erst, wenn ein anderer 1,2 m näher ist, höchstens
+  alle 0,35 s). Bei einem eigenen Pass wechselt die Steuerung gleich zum
+  Empfänger. «Wechsel» (Y bzw. Taste) wählt einen anderen Spieler; danach wird
+  2,5 s nicht automatisch zurückgewechselt. Als Goalie, beim Aufladen und im
+  Penaltyschiessen nie automatisch.
+- Fliegender Linienwechsel im Spiel: Die Spieler gehen gestaffelt raus (alle
+  0,8 s einer, höchstens 2 gleichzeitig unterwegs, wer am nächsten bei der Bank
+  ist zuerst; Ballführer und Gestürzte warten). Der Neue betritt das Feld erst,
+  wenn der Alte über der Bande ist – nie mehr als 5 Feldspieler. Zur Bank
+  laufen sie mit 6 m/s. Bei einem Unterbruch (Bully) wird sofort fertig
+  gewechselt.
+- Handy: «Wechsel» unten links direkt beim Joystick (Linkshänder rechts, im
+  Maus-Modus links neben dem Joystick; über der Taste lenkt die Maus nicht).
+  Oben neu eine Vollbild-Taste (⛶), wo der Browser Vollbild kann (iPhone-Safari
+  nicht; dort «Zum Home-Bildschirm»).
+
 ### Steuerung am PC (Wunsch nach Etappe 6)
 - Bewegung wahlweise mit Tastatur oder Maus (Einstellung «Bewegung (PC)»).
   Maus: Joystick fest unten rechts und immer sichtbar; die Mausposition

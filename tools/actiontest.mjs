@@ -44,7 +44,7 @@ log('  zurück:', h.controlled.isGoalie ? 'FEHLT' : 'ok ' + h.controlled.role);
 ensurePlay();
 const before = h.team.activeLine;
 ev = run(0.1, {}, { line: true });
-run(3);
+run(9);
 log('Linie Q:', before, '→', h.team.activeLine, h.team.pending.size ? '(noch offen ' + h.team.pending.size + ')' : '', 'Leaving', m.leaving.length);
 // Direktschuss: Gegner weg, LW passt auf C, Schuss kurz vor der Annahme
 ensurePlay();

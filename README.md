@@ -16,7 +16,7 @@ Halle, Transfers und Nachwuchs. Läuft am PC (Tastatur) und auf dem Handy
 | Alt (oder X) | Pass |
 | C | Bandenpass |
 | Shift | Sprint · als Goalie: Hechtsprung |
-| Y | Spieler wechseln |
+| Y | anderen Spieler wählen |
 | G | Goalie übernehmen |
 | Q | Linienwechsel |
 | P / Esc | Pause |
@@ -26,8 +26,11 @@ fest unten rechts. Die Mausposition relativ zu seiner Mitte bestimmt Richtung un
 (weiter weg = schneller, Maus in die Mitte = stehen bleiben) – ohne zu klicken.
 Schuss, Pass usw. bleiben auf der Tastatur.
 
-Auf dem Handy: Joystick links (Daumen irgendwo hinlegen), rechts Schuss, Pass,
-Bande, Sprint, oben Wechsel, Goalie, Linie, Pause. In den Einstellungen lassen
+Gesteuert wird automatisch der Spieler am nächsten beim Ball; mit «Wechsel» (Y)
+wählst du einen anderen.
+
+Auf dem Handy: Joystick links (Daumen irgendwo hinlegen), unten links «Wechsel»,
+rechts Schuss, Pass, Bande, Sprint, oben Goalie, Linie, Vollbild, Pause. In den Einstellungen lassen
 sich die Tasten vergrössern und für Linkshänder spiegeln. Wiederholung und
 Jubel nach einem Tor lassen sich mit einer Taste oder durch Tippen überspringen.
 
