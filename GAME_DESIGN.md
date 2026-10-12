@@ -436,3 +436,11 @@ Konkrete Festlegungen während des Baus (Werte stehen in `js/config.js`).
   der ersten Berührung/Taste.
 - Einstellungen: Ton an/aus, Lautstärke (leise/mittel/laut), Touch-Tasten
   klein/normal/gross, Linkshänder-Anordnung (Joystick rechts).
+
+### claude.ai-Artifact
+- Gleicher Code wie GitHub Pages; Erkennung über `window.claude.use`.
+- Online-Speichern im Artifact über das Claude-Konto des Spielers (privater
+  Bereich in der Artifact-Datenbank), kein Code nötig. Gleiche Konfliktwarnung
+  («neuerer Stand gewinnt»). Ohne Anmeldung oder Schreibrecht nur lokal plus
+  Datei-Export über die Download-Freigabe.
+- Bestätigungen überall mit eigenem Dialog statt `confirm()`.

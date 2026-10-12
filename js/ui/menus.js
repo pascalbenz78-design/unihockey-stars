@@ -134,7 +134,7 @@ export class Menus {
             <li>Müde Spieler sind langsamer und schiessen ungenauer – rechtzeitig wechseln!</li>
             <li><b>Auslage:</b> Schüsse auf die Seite, auf der die Kelle ist (Rückhand), sind ungenauer.</li>
             <li><b>Karriere:</b> 5 Ligen, Cup, Playoffs, Auf-/Abstieg. Geld für Halle, Sponsoren, Transfers und Nachwuchs.</li>
-            <li><b>Spielstand:</b> wird automatisch gespeichert. Unter «Spielstand» bekommst du einen Code (UH-XXXX-XXXX), um auf einem anderen Gerät weiterzuspielen.</li>
+            <li><b>Spielstand:</b> wird automatisch gespeichert. Unter «Spielstand» kannst du auf einem anderen Gerät weiterspielen: auf der Webseite mit einem Code (UH-XXXX-XXXX), als claude.ai-Artifact automatisch über dein Claude-Konto.</li>
             <li><b>Mein Verein:</b> Name, Trikots, Logo, Spieler (Aussehen, Schläger, Jubel), Aufstellung und Training. Der ★ Lieblingsspieler bekommt einen goldenen Schläger.</li>
           </ul>
           <h3>Regeln</h3>

@@ -43,3 +43,15 @@
   Netzroller-Tabellen nicht anfassen. Testeinträge nach dem Testen löschen:
   `delete from uh_savegames where code = uh_code_hash('UH-…')`.
 - Zwei Geräte testen: Tabs über `localhost` und `127.0.0.1` (getrennter Speicher).
+
+## claude.ai-Artifact
+
+- Zusätzlich veröffentlicht als Artifact: https://claude.ai/artifact/Rdqho4svtYukSqNc2h3sxC
+  (privat, Teilen über das Share-Menü auf claude.ai).
+- Aktualisieren: `node tools/artifact-entry.mjs <scratchpad>/unihockey-stars.html`, dann mit dem
+  Artifact-Tool `url` + `file_path` dieser Datei + `root` = Repo + alle Dateien aus `css/` und `js/`
+  als `files` veröffentlichen (Capabilities bleiben: db, user, downloads).
+- Im Artifact sind fremde Server (Supabase), `confirm()` und direkte Downloads gesperrt:
+  Spielstand dort im Claude-Konto (`js/save/cloud.js`, db unter `data/users/<id>/`, gzip und
+  in Teile à 180'000 Zeichen), Bestätigungen über `js/ui/dialog.js`, Export über die
+  Download-Freigabe.

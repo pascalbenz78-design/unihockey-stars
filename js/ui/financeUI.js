@@ -7,6 +7,7 @@ import {
 } from '../league/finance.js';
 import { overall } from '../club/training.js';
 import { seasonLabel } from '../league/career.js';
+import { ask } from './dialog.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const POS = { C: 'Center', F: 'Flügel', D: 'Verteidiger', G: 'Goalie' };
@@ -164,10 +165,14 @@ export class FinanceUI {
       }
       case 'carSell': {
         const p = this.club.players.find(x => x.id === +val);
-        if (!p || !confirm(`${p.firstName} ${p.lastName} wirklich verkaufen?`)) return true;
-        const r = sellPlayer(this.c, this.club, +val);
-        this.result(r, r.ok ? `Verkauft an ${r.team.name} für ${chf(r.price)}` : '');
-        this.market(); return true;
+        if (!p) return true;
+        ask(`${p.firstName} ${p.lastName} wirklich verkaufen?`, { ok: 'Verkaufen' }).then(ok => {
+          if (!ok) return;
+          const r = sellPlayer(this.c, this.club, +val);
+          this.result(r, r.ok ? `Verkauft an ${r.team.name} für ${chf(r.price)}` : '');
+          this.market();
+        });
+        return true;
       }
       case 'carPromote': {
         const r = promoteJunior(this.c, this.club, +val);
