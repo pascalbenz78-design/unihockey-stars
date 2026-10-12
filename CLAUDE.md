@@ -33,6 +33,7 @@
   - `node tools/careertest.mjs [Saisons]` – ganze Karriere-Saisons (Ligen, Cup, Playoffs, Barrage, Auf-/Abstieg)
   - `node tools/sponsortest.mjs` – Sponsorenverträge 1–3 Saisons
   - `node tools/multitest.mjs [Spiele]` – zwei Menschen (gegeneinander / zusammen, Penaltys)
+  - `node tools/pickuptest.mjs` – Ballannahme beim Vorbeilaufen (beide Seiten)
   - `node tools/synctest.mjs` – Online-Schnappschüsse (Grösse, Positionen, Tore, Eingabe-Zähler)
 - Zu zweit online: Tab A `localhost:8766` → «Spiel eröffnen», Tab B `127.0.0.1:8766/?zu-zweit=CODE`.
   Verdeckte Tabs bekommen keine Animationsbilder: beide mit `__uh.run(0.1, 30)` in Schleifen antreiben.

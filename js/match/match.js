@@ -491,8 +491,15 @@ export class Match {
       for (const p of t.skaters) {
         if (p.pickupCooldown > 0 || p.fallen > 0) continue;
         p.stickPoint(sp);
-        const d = distToSegment(sp.x, sp.y, ball.prevX, ball.prevY, ball.x, ball.y);
-        if (d < PL.controlRadius) cands.push({ p, d });
+        let d = distToSegment(sp.x, sp.y, ball.prevX, ball.prevY, ball.x, ball.y);
+        let ok = d < PL.controlRadius;
+        if (!ok && Math.hypot(ball.vx - p.vx, ball.vy - p.vy) < PL.bodyReachSpeed) {
+          // Körpernähe: Ball rollt knapp neben/unter dem Spieler durch (z. B. auf der Rückhandseite)
+          const fx = p.x + Math.cos(p.facing) * PL.bodyReachAhead, fy = p.y + Math.sin(p.facing) * PL.bodyReachAhead;
+          const bd = distToSegment(fx, fy, ball.prevX, ball.prevY, ball.x, ball.y);
+          if (bd < PL.bodyReach) { d = PL.controlRadius + bd; ok = true; }   // zählt, aber nach den Kellen-Kandidaten
+        }
+        if (ok) cands.push({ p, d });
       }
     }
     if (!cands.length) return;

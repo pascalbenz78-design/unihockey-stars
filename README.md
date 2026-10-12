@@ -29,8 +29,8 @@ Schuss, Pass usw. bleiben auf der Tastatur.
 Gesteuert wird automatisch der Spieler am nächsten beim Ball; mit «Wechsel» (Y)
 wählst du einen anderen.
 
-Auf dem Handy: Joystick fest links, rechts Schuss, Pass, Bande, Sprint und
-unten rechts in der Ecke «Wechsel», oben Goalie, Linie, Vollbild, Pause. In den Einstellungen lassen
+Auf dem Handy: Joystick fest links, darüber «Wechsel»; rechts unten Schuss und
+Pass (Ecke), darüber Sprint und Bande; oben Goalie, Linie, Vollbild, Pause. In den Einstellungen lassen
 sich die Tasten vergrössern und für Linkshänder spiegeln. Wiederholung und
 Jubel nach einem Tor lassen sich mit einer Taste oder durch Tippen überspringen.
 

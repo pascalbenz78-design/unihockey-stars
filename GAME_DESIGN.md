@@ -228,6 +228,11 @@ Konkrete Festlegungen während des Baus (Werte stehen in `js/config.js`).
   Drittel. KI gegen KI: ca. 5–8 Tore und 35 Schüsse pro Spiel.
 
 ### Zweikampf und Ballbesitz
+- Ballannahme (Wunsch nach Etappe 6): Radius um die Kelle 0,6 m (vorher 0,5).
+  Zusätzlich «Körpernähe»: Rollt ein langsamer Ball (relativ unter 7 m/s)
+  näher als 0,72 m an einer Stelle 0,2 m vor dem Spieler vorbei (z. B. auf der
+  Rückhandseite), wird er ebenfalls angenommen – Kellen-Kandidaten haben
+  Vorrang.
 - Die KI hält den Ball mindestens ~0.7 s, bevor sie passt (ausser unter
   starkem Druck), damit es Ballbesitz und Spielaufbau gibt.
 - Stockeinsatz der KI: alle ~0.5 s ein Versuch. Von vorne (Verteidiger im
@@ -508,8 +513,9 @@ Konkrete Festlegungen während des Baus (Werte stehen in `js/config.js`).
   gewechselt.
 - Handy: Joystick fest unten links (verschiebt sich nicht mehr zum Daumen; der
   Daumen kann irgendwo in der linken Zone liegen, die Richtung zählt ab der
-  Joystick-Mitte). Schuss-Taste etwas kleiner, «Wechsel» unten rechts in der
-  Ecke (Linkshänder gespiegelt). Maus-Modus am PC: Joystick 150 px vom rechten
+  Joystick-Mitte), «Wechsel» direkt darüber. Rechts unten Pass (Ecke) und
+  links daneben Schuss (beide gleich gross), darüber Bande (am Rand) und Sprint
+  (Linkshänder gespiegelt). Maus-Modus am PC: Joystick 150 px vom rechten
   Rand und 60 px vom unteren, «Wechsel» links daneben (über der Taste lenkt die
   Maus nicht).
   Oben neu eine Vollbild-Taste (⛶), wo der Browser Vollbild kann (iPhone-Safari

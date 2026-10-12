@@ -94,13 +94,13 @@ button { font: inherit; color: inherit; }
 }
 #touch button.down { background: rgba(255, 207, 46, 0.65); color: #111; }
 #btns-right {
-  position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: 16px; width: 230px; height: 210px;
+  position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: 16px; width: 170px; height: 160px;
 }
 #btns-right button { position: absolute; font-size: 14px; }
-.b-shoot { width: 76px; height: 76px; right: 0; bottom: 52px; background: rgba(232, 51, 42, 0.6) !important; font-size: 16px !important; }
-.b-pass { width: 66px; height: 66px; right: 90px; bottom: 0; }
-.b-bank { width: 60px; height: 60px; right: 92px; bottom: 80px; }
-.b-sprint { width: 58px; height: 58px; right: 9px; bottom: 140px; }
+.b-shoot { width: 76px; height: 76px; right: 88px; bottom: 0; background: rgba(232, 51, 42, 0.6) !important; font-size: 16px !important; }
+.b-pass { width: 76px; height: 76px; right: 0; bottom: 0; }
+.b-bank { width: 62px; height: 62px; right: 7px; bottom: 92px; }
+.b-sprint { width: 62px; height: 62px; right: 95px; bottom: 92px; }
 #btns-top {
   position: absolute; top: max(8px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right));
   display: flex; gap: 6px;
@@ -406,10 +406,10 @@ body.ts-gross #joybase { transform: scale(1.2); }
 /* Linkshänder: Joystick rechts, Tasten links */
 body.lefty #joyzone { left: auto; right: 0; }
 body.lefty #btns-right { right: auto; left: max(14px, env(safe-area-inset-left)); transform-origin: bottom left; }
-body.lefty .b-shoot { right: auto; left: 0; }
-body.lefty .b-pass { right: auto; left: 90px; }
-body.lefty .b-bank { right: auto; left: 92px; }
-body.lefty .b-sprint { right: auto; left: 9px; }
+body.lefty .b-shoot { right: auto; left: 88px; }
+body.lefty .b-pass { right: auto; left: 0; }
+body.lefty .b-bank { right: auto; left: 7px; }
+body.lefty .b-sprint { right: auto; left: 95px; }
 body.lefty.touch #lineinfo { left: auto; right: max(10px, env(safe-area-inset-right)); top: 54px; }
 body.lefty #btns-top { right: auto; left: max(10px, env(safe-area-inset-left)); }
 body.lefty #joybase { left: calc(100% - max(14px, env(safe-area-inset-right)) - 84px); }
@@ -452,9 +452,9 @@ body.mouse-move.lefty #joybase { left: auto; right: max(150px, env(safe-area-ins
 
 /* Wechsel-Taste unten beim Joystick (Handy links, Linkshänder rechts, Maus links neben dem Joystick) */
 #touch .b-switch {
-  position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: 10px; width: 76px; height: 40px;
+  position: absolute; left: calc(max(14px, env(safe-area-inset-left)) + 46px); bottom: 166px; width: 76px; height: 40px;
   border-radius: 23px; font-size: 13px; z-index: 1;
 }
-body.lefty #touch .b-switch { right: auto; left: max(14px, env(safe-area-inset-left)); }
+body.lefty #touch .b-switch { left: auto; right: calc(max(14px, env(safe-area-inset-right)) + 46px); }
 body.mouse-move #touch .b-switch, body.mouse-move.lefty #touch .b-switch { left: auto; right: calc(max(150px, env(safe-area-inset-right)) + 186px); bottom: 125px; width: 74px; height: 44px; }
 #btns-top [data-act="fullscreen"] { font-size: 16px !important; padding: 4px 10px !important; }

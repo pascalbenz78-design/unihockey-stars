@@ -66,7 +66,10 @@ export const CONFIG = {
     turnRate: 10,            // rad/s für die Blickrichtung
     stickOffset: 0.55,       // Kellenposition vor dem Körper
     stickSide: 0.22,         // seitlich zur Auslage
-    controlRadius: 0.5,      // Ballannahme-Radius um die Kelle
+    controlRadius: 0.6,      // Ballannahme-Radius um die Kelle
+    bodyReach: 0.72,         // langsamer Ball so nah vor/unter dem Spieler wird auch angenommen (Rückhandseite)
+    bodyReachAhead: 0.2,     // Mitte dieser Zone etwas vor dem Körper
+    bodyReachSpeed: 7,       // nur bis zu dieser Ballgeschwindigkeit (relativ zum Spieler)
     receiveSpeed: 18,        // bis zu dieser Ballgeschwindigkeit sichere Annahme (Technik 99)
     blockChance: 0.28,       // schneller Ball in Reichweite eines Feldspielers
     pickupCooldown: 0.28,    // nach Schuss/Pass kein Selbst-Aufnehmen
