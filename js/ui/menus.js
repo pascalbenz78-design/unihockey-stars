@@ -96,6 +96,8 @@ export class Menus {
       <div class="field-row"><label>Goalie</label><div class="opts">${this.toggle('autoGoalie', s.autoGoalie, 'Bei Schuss aufs eigene Tor automatisch übernehmen')}</div></div>
       <div class="field-row"><label>Ton</label><div class="opts">${this.toggle('sound', s.sound, 'Ton')}
         ${this.opts('volume', { '0.35': { label: 'Leise' }, '0.7': { label: 'Mittel' }, '1.0': { label: 'Laut' } }, String(s.volume))}</div></div>
+      <div class="field-row"><label>Bewegung (PC)</label><div class="opts">
+        ${this.opts('moveInput', { tastatur: { label: 'Tastatur' }, maus: { label: 'Maus (Joystick)' } }, s.moveInput)}</div></div>
       <div class="field-row"><label>Touch-Tasten</label><div class="opts">
         ${this.opts('touchSize', { klein: { label: 'Klein' }, normal: { label: 'Normal' }, gross: { label: 'Gross' } }, s.touchSize)}
         ${this.toggle('lefty', s.lefty, 'Linkshänder (Joystick rechts)')}</div></div>
@@ -112,9 +114,9 @@ export class Menus {
         <div>
           <h3>Tastatur</h3>
           <table class="keys">
-            <tr><td><kbd>WASD</kbd> / <kbd>Pfeile</kbd></td><td>laufen</td></tr>
+            <tr><td><kbd>WASD</kbd> / <kbd>Pfeile</kbd></td><td>laufen – oder mit der Maus: in den Einstellungen «Bewegung (PC): Maus» wählen, dann Maustaste gedrückt halten und ziehen</td></tr>
             <tr><td><kbd>Leertaste</kbd></td><td>Schuss – halten lädt auf (härter, aber ungenauer)</td></tr>
-            <tr><td><kbd>X</kbd></td><td>Pass (in Laufrichtung)</td></tr>
+            <tr><td><kbd>Alt</kbd> (oder <kbd>X</kbd>)</td><td>Pass (in Laufrichtung)</td></tr>
             <tr><td><kbd>C</kbd></td><td>Bandenpass</td></tr>
             <tr><td><kbd>Shift</kbd></td><td>Sprint (kostet Ausdauer) · Goalie: Hechtsprung</td></tr>
             <tr><td><kbd>E</kbd></td><td>zum Spieler am nächsten beim Ball wechseln</td></tr>

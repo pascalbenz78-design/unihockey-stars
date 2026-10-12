@@ -444,3 +444,11 @@ Konkrete Festlegungen während des Baus (Werte stehen in `js/config.js`).
   («neuerer Stand gewinnt»). Ohne Anmeldung oder Schreibrecht nur lokal plus
   Datei-Export über die Download-Freigabe.
 - Bestätigungen überall mit eigenem Dialog statt `confirm()`.
+
+### Steuerung am PC (Wunsch nach Etappe 6)
+- Bewegung wahlweise mit Tastatur oder Maus (Einstellung «Bewegung (PC)»).
+  Maus: gleicher virtueller Joystick wie am Handy, im ganzen Spielfeld mit
+  gedrückter Maustaste; die Handy-Tasten bleiben am PC ausgeblendet. Die
+  Tastatur-Bewegung funktioniert im Maus-Modus weiterhin.
+- Pass neu mit Alt (links und rechts/AltGr), X bleibt als Ersatz. Alt wird im
+  Spiel abgefangen, damit der Browser nicht die Menüleiste öffnet.

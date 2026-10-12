@@ -135,7 +135,7 @@ class App {
     this.menus.hide();
     this.hud.setTeams(this.match);
     this.hud.show(true);
-    this.showTouch(this.touch);
+    this.showTouch(true);
     this.hud.message(this.matchKind === 'career' && this.spectators ? `1. Drittel<small>${this.spectators.toLocaleString('de-CH')} Zuschauer</small>` : '1. Drittel', 2, 'small');
     this.input.clear();
     this.tryFullscreen();
@@ -151,7 +151,12 @@ class App {
     } catch { /* nicht unterstützt */ }
   }
 
-  showTouch(on) { document.getElementById('touch').classList.toggle('hidden', !on); }
+  // Touch-Steuerung (Handy) bzw. am PC nur der Joystick, wenn mit der Maus bewegt wird
+  showTouch(inMatch) {
+    const mouse = !this.touch && this.settings.moveInput === 'maus';
+    document.body.classList.toggle('mouse-move', mouse);
+    document.getElementById('touch').classList.toggle('hidden', !(inMatch && (this.touch || mouse)));
+  }
 
   toMenu() {
     this.paused = false;
@@ -187,6 +192,7 @@ class App {
     if (this.match && (k === 'autoChange' || k === 'autoGoalie')) this.match.settings[k] = v;
     if (k === 'sound' || k === 'volume') this.sound.setEnabled(this.settings.sound, +this.settings.volume);
     if (k === 'touchSize' || k === 'lefty') this.applyControlPrefs();
+    if (k === 'moveInput') this.showTouch(this.mode === 'match');
   }
 
   frame(now) {

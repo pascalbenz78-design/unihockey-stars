@@ -209,6 +209,7 @@ export const CONFIG = {
     sound: true,
     volume: 0.7,
     touchSize: 'normal',
+    moveInput: 'tastatur',   // PC: Bewegung mit «tastatur» oder «maus» (Joystick wie am Handy)
     lefty: false,
   },
 };

@@ -1,9 +1,11 @@
-// Eingabe: Tastatur (PC) und Touch (virtueller Joystick + Tasten).
+// Eingabe: Tastatur (PC), Touch (virtueller Joystick + Tasten) und am PC
+// wahlweise Bewegung mit der Maus (gleicher Joystick, mit gedrückter Maustaste).
 // poll() liefert den Zustand (Richtung, gehaltene Tasten) und die seit dem
 // letzten Aufruf neu gedrückten Tasten.
 
 const KEYMAP = {
-  Space: 'shoot', KeyX: 'pass', KeyC: 'bank', ShiftLeft: 'sprint', ShiftRight: 'sprint',
+  // Pass: Alt (links oder rechts/AltGr); X bleibt als Ersatz, falls Alt im Browser nicht ankommt
+  Space: 'shoot', AltLeft: 'pass', AltRight: 'pass', KeyX: 'pass', KeyC: 'bank', ShiftLeft: 'sprint', ShiftRight: 'sprint',
   KeyE: 'switch', KeyG: 'goalie', KeyQ: 'line', KeyP: 'pause', Escape: 'pause',
 };
 const MOVE = {
@@ -27,14 +29,16 @@ export class Input {
 
   onKey(e, down) {
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
-    const act = KEYMAP[e.code];
-    if (act || MOVE[e.code]) e.preventDefault();
+    // Manche Umgebungen melden Alt nur über den Tastennamen
+    const code = e.code || (e.key === 'Alt' ? 'AltLeft' : e.key === 'AltGraph' ? 'AltRight' : '');
+    const act = KEYMAP[code];
+    if (act || MOVE[code]) e.preventDefault();   // verhindert u. a., dass Alt die Menüleiste öffnet
     if (down) {
-      if (this.keys.has(e.code)) return; // Tastenwiederholung ignorieren
-      this.keys.add(e.code);
+      if (this.keys.has(code)) return; // Tastenwiederholung ignorieren
+      this.keys.add(code);
       if (act) { this.pressed[act] = true; this.held[act] = true; }
     } else {
-      this.keys.delete(e.code);
+      this.keys.delete(code);
       if (act) this.held[act] = [...this.keys].some(k => KEYMAP[k] === act);
     }
   }

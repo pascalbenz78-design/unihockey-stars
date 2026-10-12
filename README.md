@@ -11,15 +11,19 @@ Halle, Transfers und Nachwuchs. Läuft am PC (Tastatur) und auf dem Handy
 
 | Taste | Aktion |
 |---|---|
-| WASD / Pfeiltasten | laufen |
+| WASD / Pfeiltasten | laufen (oder mit der Maus, siehe unten) |
 | Leertaste | Schuss (halten = aufladen) |
-| X | Pass |
+| Alt (oder X) | Pass |
 | C | Bandenpass |
 | Shift | Sprint · als Goalie: Hechtsprung |
 | E | Spieler wechseln |
 | G | Goalie übernehmen |
 | Q | Linienwechsel |
 | P / Esc | Pause |
+
+Bewegung mit der Maus: Einstellungen → «Bewegung (PC): Maus». Dann im Spielfeld die
+Maustaste gedrückt halten und in die gewünschte Richtung ziehen (wie der Joystick am
+Handy); loslassen = stehen bleiben. Schuss, Pass usw. bleiben auf der Tastatur.
 
 Auf dem Handy: Joystick links (Daumen irgendwo hinlegen), rechts Schuss, Pass,
 Bande, Sprint, oben Wechsel, Goalie, Linie, Pause. In den Einstellungen lassen
