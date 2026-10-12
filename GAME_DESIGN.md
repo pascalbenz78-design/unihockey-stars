@@ -447,8 +447,11 @@ Konkrete Festlegungen während des Baus (Werte stehen in `js/config.js`).
 
 ### Steuerung am PC (Wunsch nach Etappe 6)
 - Bewegung wahlweise mit Tastatur oder Maus (Einstellung «Bewegung (PC)»).
-  Maus: gleicher virtueller Joystick wie am Handy, im ganzen Spielfeld mit
-  gedrückter Maustaste; die Handy-Tasten bleiben am PC ausgeblendet. Die
+  Maus: Joystick fest unten rechts und immer sichtbar; die Mausposition
+  relativ zu seiner Mitte bestimmt Richtung und Tempo, ohne Klick (tote Zone
+  in der Mitte = stehen bleiben, voller Ausschlag am Rand). Verlässt die Maus
+  das Fenster, bleibt der Spieler stehen. Die Handy-Tasten bleiben am PC
+  ausgeblendet. Die
   Tastatur-Bewegung funktioniert im Maus-Modus weiterhin.
 - Pass neu mit Alt (links und rechts/AltGr), X bleibt als Ersatz. Alt wird im
   Spiel abgefangen, damit der Browser nicht die Menüleiste öffnet.

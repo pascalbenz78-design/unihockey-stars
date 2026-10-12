@@ -21,9 +21,10 @@ Halle, Transfers und Nachwuchs. Läuft am PC (Tastatur) und auf dem Handy
 | Q | Linienwechsel |
 | P / Esc | Pause |
 
-Bewegung mit der Maus: Einstellungen → «Bewegung (PC): Maus». Dann im Spielfeld die
-Maustaste gedrückt halten und in die gewünschte Richtung ziehen (wie der Joystick am
-Handy); loslassen = stehen bleiben. Schuss, Pass usw. bleiben auf der Tastatur.
+Bewegung mit der Maus: Einstellungen → «Bewegung (PC): Maus». Der Joystick steht dann
+fest unten rechts. Die Mausposition relativ zu seiner Mitte bestimmt Richtung und Tempo
+(weiter weg = schneller, Maus in die Mitte = stehen bleiben) – ohne zu klicken.
+Schuss, Pass usw. bleiben auf der Tastatur.
 
 Auf dem Handy: Joystick links (Daumen irgendwo hinlegen), rechts Schuss, Pass,
 Bande, Sprint, oben Wechsel, Goalie, Linie, Pause. In den Einstellungen lassen

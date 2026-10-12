@@ -1,5 +1,6 @@
 // Eingabe: Tastatur (PC), Touch (virtueller Joystick + Tasten) und am PC
-// wahlweise Bewegung mit der Maus (gleicher Joystick, mit gedrückter Maustaste).
+// wahlweise Bewegung mit der Maus: Der Joystick steht fest unten rechts, die
+// Mausposition relativ zu seiner Mitte bestimmt Richtung und Tempo (ohne Klick).
 // poll() liefert den Zustand (Richtung, gehaltene Tasten) und die seit dem
 // letzten Aufruf neu gedrückten Tasten.
 
@@ -21,6 +22,8 @@ export class Input {
     this.pressed = {};
     this.held = {};
     this.joy = { x: 0, y: 0, id: null, ox: 0, oy: 0 };
+    this.mouseMode = false;
+    this.mouse = { x: 0, y: 0, active: false };
     this.enabled = true;
     addEventListener('keydown', e => this.onKey(e, true));
     addEventListener('keyup', e => this.onKey(e, false));
@@ -29,8 +32,8 @@ export class Input {
 
   onKey(e, down) {
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
-    // Manche Umgebungen melden Alt nur über den Tastennamen
-    // Spielerwechsel über den aufgedruckten Buchstaben Y (QWERTZ und QWERTY liegen dort verschieden)
+    // Spielerwechsel über den aufgedruckten Buchstaben Y (QWERTZ und QWERTY liegen dort verschieden);
+    // manche Umgebungen melden Alt nur über den Tastennamen
     const code = (e.key === 'y' || e.key === 'Y') ? 'LetterY'
       : e.code || (e.key === 'Alt' ? 'AltLeft' : e.key === 'AltGraph' ? 'AltRight' : '');
     const act = KEYMAP[code];
@@ -43,6 +46,34 @@ export class Input {
       this.keys.delete(code);
       if (act) this.held[act] = [...this.keys].some(k => KEYMAP[k] === act);
     }
+  }
+
+  // Maus-Steuerung: Joystick fest unten rechts, Mausposition = Ausschlag
+  bindMouse(knob) {
+    const base = knob.parentElement;
+    const update = e => {
+      if (!this.mouseMode || e.pointerType === 'touch') return;
+      const r = base.getBoundingClientRect();
+      const R = r.width / 2;
+      const dx = e.clientX - (r.left + R), dy = e.clientY - (r.top + R);
+      const d = Math.hypot(dx, dy), k = d > R ? R / d : 1;
+      this.mouse.x = dx * k / R; this.mouse.y = -dy * k / R;
+      this.mouse.active = true;
+      knob.style.transform = `translate(${dx * k}px, ${dy * k}px)`;
+    };
+    const stop = () => {
+      this.mouse.x = 0; this.mouse.y = 0; this.mouse.active = false;
+      knob.style.transform = '';
+    };
+    addEventListener('pointermove', update);
+    document.documentElement.addEventListener('mouseleave', stop);   // Maus verlässt das Fenster
+    addEventListener('blur', stop);
+    this.stopMouse = stop;
+  }
+
+  setMouseMode(on) {
+    this.mouseMode = on;
+    if (!on && this.stopMouse) this.stopMouse();
   }
 
   // Touch-Steuerung an die Elemente binden
@@ -92,6 +123,11 @@ export class Input {
     for (const k of this.keys) { const v = MOVE[k]; if (v) { mx += v[0]; my += v[1]; } }
     const l = Math.hypot(mx, my);
     if (l > 1) { mx /= l; my /= l; }
+    if (this.mouseMode && this.mouse.active && !mx && !my) {
+      // Maus: kleine tote Zone in der Mitte, danach stufenlos bis voller Ausschlag
+      const j = Math.hypot(this.mouse.x, this.mouse.y);
+      if (j > 0.15) { const s = Math.min(1, (j - 0.15) / 0.75) / j; mx = this.mouse.x * s; my = this.mouse.y * s; }
+    }
     if (this.joy.id != null) {
       const j = Math.hypot(this.joy.x, this.joy.y);
       // kleine tote Zone, danach volle Richtung

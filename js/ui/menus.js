@@ -114,7 +114,7 @@ export class Menus {
         <div>
           <h3>Tastatur</h3>
           <table class="keys">
-            <tr><td><kbd>WASD</kbd> / <kbd>Pfeile</kbd></td><td>laufen – oder mit der Maus: in den Einstellungen «Bewegung (PC): Maus» wählen, dann Maustaste gedrückt halten und ziehen</td></tr>
+            <tr><td><kbd>WASD</kbd> / <kbd>Pfeile</kbd></td><td>laufen – oder mit der Maus: in den Einstellungen «Bewegung (PC): Maus» wählen. Der Joystick steht unten rechts; zeige mit der Maus in die gewünschte Richtung (weiter weg = schneller, Mitte = stehen bleiben), ohne zu klicken</td></tr>
             <tr><td><kbd>Leertaste</kbd></td><td>Schuss – halten lädt auf (härter, aber ungenauer)</td></tr>
             <tr><td><kbd>Alt</kbd> (oder <kbd>X</kbd>)</td><td>Pass (in Laufrichtung)</td></tr>
             <tr><td><kbd>C</kbd></td><td>Bandenpass</td></tr>

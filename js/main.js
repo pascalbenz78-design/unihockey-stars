@@ -97,6 +97,7 @@ class App {
   bindTouch() {
     const t = document.getElementById('touch');
     this.input.bindTouch(document.getElementById('joyzone'), document.getElementById('joyknob'), t.querySelectorAll('[data-act]'));
+    this.input.bindMouse(document.getElementById('joyknob'));
     t.querySelector('[data-act="pause"]').addEventListener('pointerdown', () => this.pause());
     // Tippen/Klicken überspringt Wiederholung und Jubel
     addEventListener('pointerdown', e => {
@@ -155,6 +156,7 @@ class App {
   showTouch(inMatch) {
     const mouse = !this.touch && this.settings.moveInput === 'maus';
     document.body.classList.toggle('mouse-move', mouse);
+    this.input.setMouseMode(mouse && inMatch);
     document.getElementById('touch').classList.toggle('hidden', !(inMatch && (this.touch || mouse)));
   }
 
